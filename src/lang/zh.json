@@ -27,6 +27,7 @@
     "label.theme_builtin": "主题预设",
     "manager.search_plugins_placeholder": "搜索插件...",
     "manager.search_themes_placeholder": "搜索主题...",
+    "manager.syncing_cloud": "正在同步云端数据...",
     "action.import_dictionary": "导入词典",
     "action.add_translation": "添加翻译",
     "action.export_template": "导出模板",

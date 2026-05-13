@@ -48,6 +48,7 @@ export const baseDictionary = {
     // === Manager Search ===
     "manager.search_plugins_placeholder": "Search plugins...",
     "manager.search_themes_placeholder": "Search themes...",
+    "manager.syncing_cloud": "Syncing cloud data...",
 
     // === Manager Actions ===
     "action.import_dictionary": "Import dictionary",

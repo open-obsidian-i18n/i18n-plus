@@ -139,19 +139,21 @@ export class DictionaryEditorView {
     /**
      * Confirm close with unsaved changes
      */
-    private async confirmClose(): Promise<void> {
+    private confirmClose(): void {
         if (!this.state.hasUnsavedChanges) {
             this.close();
             return;
         }
 
         // Use a modal for confirmation
-        const modal = new ConfirmModal(this.app, t('editor.unsaved_changes_title') + '\n\n' + t('editor.unsaved_changes_message'), async (saveFirst) => {
+        const modal = new ConfirmModal(this.app, t('editor.unsaved_changes_title') + '\n\n' + t('editor.unsaved_changes_message'), (saveFirst) => {
             if (saveFirst) {
-                const saved = await this.saveDictionary();
-                if (saved) {
-                    this.close();
-                }
+                void (async () => {
+                    const saved = await this.saveDictionary();
+                    if (saved) {
+                        this.close();
+                    }
+                })();
             } else {
                 // Discard changes and close
                 this.close();
@@ -225,7 +227,7 @@ export class DictionaryEditorView {
             if (typeof value === 'string') {
                 // Get base value from base dictionary (for reference)
                 const baseValue = baseDict && typeof baseDict[key] === 'string'
-                    ? baseDict[key] as string
+                    ? baseDict[key]
                     : undefined;
 
                 // Use base value for variable detection if current value is empty
@@ -257,9 +259,9 @@ export class DictionaryEditorView {
         const backBtn = header.createDiv({ cls: 'clickable-icon i18n-plus-editor-back-btn' });
         setIcon(backBtn, 'arrow-left');
         setTooltip(backBtn, 'Back');
-        backBtn.onclick = async () => {
+        backBtn.onclick = () => {
             if (!this.state.isReadOnly && this.state.hasUnsavedChanges) {
-                await this.confirmClose();
+                this.confirmClose();
             } else {
                 this.close();
             }
@@ -510,11 +512,13 @@ export class DictionaryEditorView {
                     .setCta();
 
                 // Manual event listener to ensure it fires reliably
-                btn.buttonEl.addEventListener('click', async () => {
+                btn.buttonEl.addEventListener('click', () => {
                     if (!btn.buttonEl.disabled) {
-                        await this.saveDictionary();
-                        // Update button state after save
-                        this.updateSaveButtonState();
+                        void (async () => {
+                            await this.saveDictionary();
+                            // Update button state after save
+                            this.updateSaveButtonState();
+                        })();
                     }
                 });
 
@@ -558,14 +562,14 @@ export class DictionaryEditorView {
                                 }
                                 // Return to editor view after save
                                 this.plugin.floatingWidget?.showView(
-                                    (container) => this.render(container),
+                                    (container) => { void this.render(container); },
                                     t('editor.title')
                                 );
                             },
                             () => {
                                 // Cancel - return to editor view
                                 this.plugin.floatingWidget?.showView(
-                                    (container) => this.render(container),
+                                    (container) => { void this.render(container); },
                                     t('editor.title')
                                 );
                             }
@@ -596,13 +600,11 @@ export class DictionaryEditorView {
         setting.addButton(btn => btn
             .setButtonText(t('editor.close'))
             .onClick(() => {
-                void (async () => {
-                    if (!this.state.isReadOnly && this.state.hasUnsavedChanges) {
-                        await this.confirmClose();
-                    } else {
-                        this.close();
-                    }
-                })();
+                if (!this.state.isReadOnly && this.state.hasUnsavedChanges) {
+                    this.confirmClose();
+                } else {
+                    this.close();
+                }
             })
         );
     }

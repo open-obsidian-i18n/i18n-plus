@@ -237,7 +237,7 @@ export class DictionaryStore {
             try {
                 if (await this.app.vault.adapter.exists(info.filePath)) {
                     const content = await this.app.vault.adapter.read(info.filePath);
-                    const dict = JSON.parse(content);
+                    const dict = JSON.parse(content) as Dictionary;
                     manager.loadDictionary(pluginId, info.locale, dict);
                     count++;
                 }
@@ -655,7 +655,7 @@ export class DictionaryStore {
             // This avoids creating empty folders for themes without settings
             const { strings } = ThemeExtractor.extractSettings(cssContent);
             if (Object.keys(strings).length > 0) {
-                console.log(`[i18n-plus] Base dictionary missing for ${themeName}, generating...`);
+                console.debug(`[i18n-plus] Base dictionary missing for ${themeName}, generating...`);
                 await this.generateBaseThemeDictionary(themeName);
                 return true;
             }
@@ -673,7 +673,7 @@ export class DictionaryStore {
                 return false;
             }
 
-            console.log(`[i18n-plus] Theme ${themeName} changed (hash mismatch), updating base dictionary...`);
+            console.debug(`[i18n-plus] Theme ${themeName} changed (hash mismatch), updating base dictionary...`);
             await this.generateBaseThemeDictionary(themeName);
             return true;
         } catch (e) {

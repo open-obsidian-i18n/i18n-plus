@@ -73,7 +73,7 @@ export class ThemeExtractor {
             strings['@@ids'] = JSON.stringify(ids);
         }
 
-        console.log(`[i18n-plus] Extracted ${Object.keys(strings).length} strings from theme CSS. Hash: ${hash}`);
+        console.debug(`[i18n-plus] Extracted ${Object.keys(strings).length} strings from theme CSS. Hash: ${hash}`);
         return { strings, hash };
     }
 

@@ -78,7 +78,8 @@ export class I18nFloatingWidget {
         const header = this.panelEl.createDiv({ cls: 'i18n-plus-fw-header' });
 
         // Drag Handle (Title)
-        this.headerTitle = header.createEl('span', { text: 'i18n+', cls: 'i18n-plus-fw-title' });
+        const brandName = 'i18n+';
+        this.headerTitle = header.createEl('span', { text: brandName, cls: 'i18n-plus-fw-title' });
         this.enableDrag(header); // Allow dragging by header
 
         // Controls

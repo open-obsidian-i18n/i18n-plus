@@ -9,7 +9,7 @@
  * - Unloading dictionaries
  */
 
-import { App, Modal, Setting, Notice, setIcon, SuggestModal } from 'obsidian';
+import { App, Setting, Notice, setIcon } from 'obsidian';
 import type I18nPlusPlugin from '../main';
 import { getI18nPlusManager } from '../framework/global-api';
 import { DictionaryStore, DictionaryFileInfo, ThemeDictionaryFileInfo } from '../services/dictionary-store';
@@ -45,7 +45,7 @@ export class DictionaryManagerView {
         if (!this.plugin.cloudManager.hasLoaded) {
             void this.plugin.cloudManager.fetchRemoteManifest().then(() => {
                 if (container && container.isConnected) {
-                    this.render(container);
+                    void this.render(container);
                 }
             });
         }
@@ -67,7 +67,7 @@ export class DictionaryManagerView {
         pluginTab.onclick = () => {
             if (this.activeTab !== 'plugins') {
                 this.activeTab = 'plugins';
-                this.render(container);
+                void this.render(container);
             }
         };
 
@@ -78,7 +78,7 @@ export class DictionaryManagerView {
         themeTab.onclick = () => {
             if (this.activeTab !== 'themes') {
                 this.activeTab = 'themes';
-                this.render(container);
+                void this.render(container);
             }
         };
 
@@ -101,8 +101,9 @@ export class DictionaryManagerView {
         if (this.plugin.cloudManager.isFetching) {
             const progressDiv = container.createDiv({ cls: 'i18n-plus-cloud-progress' });
 
-            progressDiv.createEl('span', { text: '☁️ Syncing cloud data...', cls: 'i18n-plus-loading-text' });
-            const progressBar = progressDiv.createEl('progress');
+            const syncText = `☁️ ${t('manager.syncing_cloud') || 'Syncing cloud data...'}`;
+            progressDiv.createEl('span', { text: syncText, cls: 'i18n-plus-loading-text' });
+            progressDiv.createEl('progress');
         }
 
         // Refresh Button (Icon Only)
@@ -118,7 +119,7 @@ export class DictionaryManagerView {
             const fetchPromise = this.plugin.cloudManager.fetchRemoteManifest(true);
 
             // Re-render immediately to show progress bar
-            this.render(container);
+            void this.render(container);
 
             void fetchPromise.then(() => {
                 void this.plugin.dictionaryStore.autoLoadDictionaries().then(pluginCount => {
@@ -484,7 +485,7 @@ export class DictionaryManagerView {
             const updateBtn = controls.createEl('button', { cls: 'clickable-icon is-update' });
             updateBtn.setAttribute('aria-label', t('action.update_available', { version: updateAvailable.dictVersion }) || `Update to v${updateAvailable.dictVersion}`);
             setIcon(updateBtn, 'refresh-ccw-dot');
-            updateBtn.onclick = () => this.handleCloudDownload(updateAvailable!);
+            updateBtn.onclick = () => this.handleCloudDownload(updateAvailable);
         }
 
         // View Content
@@ -506,9 +507,9 @@ export class DictionaryManagerView {
         setIcon(exportBtn, 'download');
         exportBtn.onclick = () => {
             if (type === 'builtin') {
-                this.exportBuiltinDictionary(pluginId, locale);
+                void this.exportBuiltinDictionary(pluginId, locale);
             } else if (dictFile) {
-                this.exportDictionary(dictFile);
+                void this.exportDictionary(dictFile);
             }
         };
 
@@ -611,15 +612,15 @@ export class DictionaryManagerView {
         }
 
         // Clone and clean metadata
-        const exportDict = JSON.parse(JSON.stringify(fullDict));
+        const exportDict = JSON.parse(JSON.stringify(fullDict)) as Dictionary;
         if (exportDict.$meta) {
             // Reconstruct meta to enforce order
             const oldMeta = exportDict.$meta;
             exportDict.$meta = {
                 pluginId: oldMeta.pluginId,
                 pluginVersion: oldMeta.pluginVersion,
-                dictVersion: oldMeta.dictVersion,
-                locale: oldMeta.locale,
+                dictVersion: oldMeta.dictVersion ?? '',
+                locale: oldMeta.locale ?? '',
                 description: oldMeta.description
             };
         }
@@ -692,12 +693,14 @@ export class DictionaryManagerView {
             t('manager.delete_confirm_title'),
             t('manager.delete_confirm_message', { pluginId: dict.pluginId, locale: dict.locale }),
             t('action.delete'),
-            async () => {
-                const manager = getI18nPlusManager();
-                manager.unloadDictionary(dict.pluginId, dict.locale);
-                await this.store.deleteDictionary(dict.pluginId, dict.locale);
-                new Notice(t('notice.removed_dict', { locale: dict.locale }));
-                this.plugin.floatingWidget?.refresh();
+            () => {
+                void (async () => {
+                    const manager = getI18nPlusManager();
+                    manager.unloadDictionary(dict.pluginId, dict.locale);
+                    await this.store.deleteDictionary(dict.pluginId, dict.locale);
+                    new Notice(t('notice.removed_dict', { locale: dict.locale }));
+                    this.plugin.floatingWidget?.refresh();
+                })();
             }
         );
     }
@@ -727,65 +730,67 @@ export class DictionaryManagerView {
                 return { ...l, cloudInfo: remote };
             });
 
-        this.showLocaleSelector(options, async (selectedLocale) => {
-            // 1. Check Cloud
-            if (selectedLocale.cloudInfo) {
-                await this.handleCloudDownload(selectedLocale.cloudInfo);
-                return;
-            }
-
-            try {
-                // 2. Prepare new dictionary from base content
-                const baseLocale = translator.baseLocale;
-                const baseDict = translator.getDictionary(baseLocale);
-
-                if (!baseDict) {
-                    new Notice(t('notice.base_dict_not_found', { locale: baseLocale }));
+        this.showLocaleSelector(options, (selectedLocale) => {
+            void (async () => {
+                // 1. Check Cloud
+                if (selectedLocale.cloudInfo) {
+                    await this.handleCloudDownload(selectedLocale.cloudInfo);
                     return;
                 }
 
-                // Try to get plugin version
-                // @ts-ignore - accessing internal API
-                const pluginManifest = (this.app as App & { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[pluginId];
-                const pluginVersion = pluginManifest?.version || '0.0.0';
+                try {
+                    // 2. Prepare new dictionary from base content
+                    const baseLocale = translator.baseLocale;
+                    const baseDict = translator.getDictionary(baseLocale);
 
-                const newDict: Dictionary = {
-                    $meta: {
-                        pluginId: pluginId,
-                        pluginVersion: pluginVersion,
-                        dictVersion: '1.0.0',
-                        locale: selectedLocale.code,
-                        author: 'User'
+                    if (!baseDict) {
+                        new Notice(t('notice.base_dict_not_found', { locale: baseLocale }));
+                        return;
                     }
-                };
 
-                // Copy keys with empty values
-                for (const key of Object.keys(baseDict)) {
-                    if (key !== '$meta') {
-                        newDict[key] = "";
+                    // Try to get plugin version
+                    // @ts-ignore - accessing internal API
+                    const pluginManifest = (this.app as App & { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[pluginId];
+                    const pluginVersion = pluginManifest?.version || '0.0.0';
+
+                    const newDict: Dictionary = {
+                        $meta: {
+                            pluginId: pluginId,
+                            pluginVersion: pluginVersion,
+                            dictVersion: '1.0.0',
+                            locale: selectedLocale.code,
+                            author: 'User'
+                        }
+                    };
+
+                    // Copy keys with empty values
+                    for (const key of Object.keys(baseDict)) {
+                        if (key !== '$meta') {
+                            newDict[key] = "";
+                        }
                     }
+
+                    // 3. Create file
+                    await this.store.createDictionary(pluginId, selectedLocale.code, newDict);
+
+                    // 4. Load into manager
+                    manager.loadDictionary(pluginId, selectedLocale.code, newDict);
+
+                    // 5. Update UI
+                    new Notice(t('notice.created_dict', { locale: selectedLocale.code }));
+
+                    // 6. Open Editor immediately
+                    // We show editor for the newly created file (external, so isBuiltin=false)
+                    this.plugin.showDictionaryEditor(pluginId, selectedLocale.code, undefined, false);
+
+                    // Refresh list
+                    this.plugin.floatingWidget?.refresh();
+
+                } catch (error) {
+                    console.error('[i18n-plus] Failed to create dictionary:', error);
+                    new Notice(t('notice.create_failed', { error: String(error) }));
                 }
-
-                // 3. Create file
-                await this.store.createDictionary(pluginId, selectedLocale.code, newDict);
-
-                // 4. Load into manager
-                manager.loadDictionary(pluginId, selectedLocale.code, newDict);
-
-                // 5. Update UI
-                new Notice(t('notice.created_dict', { locale: selectedLocale.code }));
-
-                // 6. Open Editor immediately
-                // We show editor for the newly created file (external, so isBuiltin=false)
-                this.plugin.showDictionaryEditor(pluginId, selectedLocale.code, undefined, false);
-
-                // Refresh list
-                this.plugin.floatingWidget?.refresh();
-
-            } catch (error) {
-                console.error('[i18n-plus] Failed to create dictionary:', error);
-                new Notice(t('notice.create_failed', { error: String(error) }));
-            }
+            })();
         });
     }
 
@@ -944,20 +949,19 @@ export class DictionaryManagerView {
     private checkThemeUpdate(themeName: string, hasEn: boolean) {
         // If we don't have base dict, or we want to ensure it's up to date
         // We run this asynchronously to avoid blocking UI rendering
-        window.setTimeout(async () => {
-            try {
-                const updated = await this.store.ensureThemeBaseDictionaryUpToDate(themeName);
-                if (updated) {
-                    new Notice(hasEn ? t('notice.theme_updated', { theme: themeName }) || `Updated base dictionary for ${themeName}` : t('notice.theme_generated', { theme: themeName }) || `Generated base dictionary for ${themeName}`);
-                    // Refresh view to show updated version/content
-                    this.plugin.showDictionaryManager();
-                    // Or better: re-render just this section? 
-                    // Since layout can change, full re-render is safer but might close potential other open sections?
-                    // Currently showDictionaryManager() clears and rebuilds.
+        window.setTimeout(() => {
+            void (async () => {
+                try {
+                    const updated = await this.store.ensureThemeBaseDictionaryUpToDate(themeName);
+                    if (updated) {
+                        new Notice(hasEn ? t('notice.theme_updated', { theme: themeName }) || `Updated base dictionary for ${themeName}` : t('notice.theme_generated', { theme: themeName }) || `Generated base dictionary for ${themeName}`);
+                        // Refresh view to show updated version/content
+                        this.plugin.showDictionaryManager();
+                    }
+                } catch (err) {
+                    console.error(`[i18n-plus] Auto-update check failed for ${themeName}`, err);
                 }
-            } catch (e) {
-                console.error(`[i18n-plus] Auto-update check failed for ${themeName}`, e);
-            }
+            })();
         }, 100);
     }
 
@@ -1034,42 +1038,44 @@ export class DictionaryManagerView {
             return { ...l, cloudInfo: remote };
         });
 
-        this.showLocaleSelector(options, async (selectedLocale) => {
-            // 1. Cloud Download
-            if (selectedLocale.cloudInfo) {
-                await this.handleCloudDownload(selectedLocale.cloudInfo, true);
-                return;
-            }
-
-            try {
-                // Check if exists
-                const exists = await this.store.loadThemeDictionary(themeName, selectedLocale.code);
-                if (exists) {
-                    new Notice(`Dictionary for ${selectedLocale.code} already exists.`);
+        this.showLocaleSelector(options, (selectedLocale) => {
+            void (async () => {
+                // 1. Cloud Download
+                if (selectedLocale.cloudInfo) {
+                    await this.handleCloudDownload(selectedLocale.cloudInfo, true);
                     return;
                 }
 
-                // Create new basic dict
-                const newDict: Dictionary = {
-                    $meta: {
-                        themeName: themeName,
-                        themeVersion: '0.0.0', // Placeholder
-                        dictVersion: Date.now().toString(),
-                        locale: selectedLocale.code,
-                        description: `User created dictionary for ${themeName}`
+                try {
+                    // Check if exists
+                    const exists = await this.store.loadThemeDictionary(themeName, selectedLocale.code);
+                    if (exists) {
+                        new Notice(`Dictionary for ${selectedLocale.code} already exists.`);
+                        return;
                     }
-                };
 
-                await this.store.saveThemeDictionary(themeName, selectedLocale.code, newDict);
-                manager.loadThemeDictionary(themeName, selectedLocale.code, newDict);
+                    // Create new basic dict
+                    const newDict: Dictionary = {
+                        $meta: {
+                            themeName: themeName,
+                            themeVersion: '0.0.0', // Placeholder
+                            dictVersion: Date.now().toString(),
+                            locale: selectedLocale.code,
+                            description: `User created dictionary for ${themeName}`
+                        }
+                    };
 
-                new Notice(t('notice.created_dict', { locale: selectedLocale.code }));
-                this.plugin.floatingWidget?.refresh();
+                    await this.store.saveThemeDictionary(themeName, selectedLocale.code, newDict);
+                    manager.loadThemeDictionary(themeName, selectedLocale.code, newDict);
 
-            } catch (error) {
-                console.error('[i18n-plus] Failed to create theme dictionary:', error);
-                new Notice(t('notice.create_failed', { error: String(error) }));
-            }
+                    new Notice(t('notice.created_dict', { locale: selectedLocale.code }));
+                    this.plugin.floatingWidget?.refresh();
+
+                } catch (error) {
+                    console.error('[i18n-plus] Failed to create theme dictionary:', error);
+                    new Notice(t('notice.create_failed', { error: String(error) }));
+                }
+            })();
         });
     }
 
@@ -1080,28 +1086,30 @@ export class DictionaryManagerView {
         const input = activeDocument.createElement('input');
         input.type = 'file';
         input.accept = '.json';
-        input.onchange = async () => {
-            const file = input.files?.[0];
-            if (!file) return;
+        input.onchange = () => {
+            void (async () => {
+                const file = input.files?.[0];
+                if (!file) return;
 
-            try {
-                const text = await file.text();
-                const dict = JSON.parse(text);
-                // Validate minimal requirements
-                if (!dict.$meta?.locale) {
-                    new Notice("Invalid dictionary: missing $meta.locale");
-                    return;
+                try {
+                    const text = await file.text();
+                    const dict = JSON.parse(text) as Dictionary;
+                    // Validate minimal requirements
+                    if (!dict.$meta?.locale) {
+                        new Notice("Invalid dictionary: missing $meta.locale");
+                        return;
+                    }
+                    const locale: string = dict.$meta.locale;
+
+                    await this.store.saveThemeDictionary(themeName, locale, dict);
+                    getI18nPlusManager().loadThemeDictionary(themeName, locale, dict);
+
+                    new Notice(t('notice.import_success', { pluginId: themeName }));
+                    this.plugin.floatingWidget?.refresh();
+                } catch (err) {
+                    new Notice("Import failed: " + String(err));
                 }
-                const locale = dict.$meta.locale;
-
-                await this.store.saveThemeDictionary(themeName, locale, dict);
-                getI18nPlusManager().loadThemeDictionary(themeName, locale, dict);
-
-                new Notice(t('notice.import_success', { pluginId: themeName }));
-                this.plugin.floatingWidget?.refresh();
-            } catch (e) {
-                new Notice("Import failed: " + e);
-            }
+            })();
         };
         input.click();
     }
@@ -1112,7 +1120,7 @@ export class DictionaryManagerView {
     private async exportThemeDictionary(dict: ThemeDictionaryFileInfo) {
         try {
             const content = await this.app.vault.adapter.read(dict.filePath);
-            const exportDict = JSON.parse(content);
+            const exportDict = JSON.parse(content) as Dictionary;
 
             // Clean metadata
             if (exportDict.$meta) {
@@ -1121,8 +1129,8 @@ export class DictionaryManagerView {
                 exportDict.$meta = {
                     themeName: oldMeta.themeName,
                     themeVersion: oldMeta.themeVersion,
-                    dictVersion: oldMeta.dictVersion,
-                    locale: oldMeta.locale,
+                    dictVersion: oldMeta.dictVersion ?? '',
+                    locale: oldMeta.locale ?? '',
                     description: oldMeta.description
                 };
             }
@@ -1137,7 +1145,7 @@ export class DictionaryManagerView {
             a.click();
             URL.revokeObjectURL(url);
             new Notice(t('notice.export_success', { locale: dict.locale, pluginId: dict.themeName }));
-        } catch (e) {
+        } catch {
             new Notice(t('notice.export_failed'));
         }
     }
@@ -1150,16 +1158,16 @@ export class DictionaryManagerView {
             t('manager.delete_confirm_title'),
             t('manager.delete_confirm_message', { pluginId: dict.themeName, locale: dict.locale }), // Reuse keys
             t('action.delete'),
-            async () => {
-                const manager = getI18nPlusManager();
-                // Let's try to unload.
-                manager.unloadThemeDictionary(dict.themeName, dict.locale); // Try folder name
+            () => {
+                void (async () => {
+                    const manager = getI18nPlusManager();
+                    manager.unloadThemeDictionary(dict.themeName, dict.locale);
 
-                // Better approach: just delete file and let user refresh/restart if memory unload fails.
-                await this.store.deleteThemeDictionary(dict.themeName, dict.locale);
+                    await this.store.deleteThemeDictionary(dict.themeName, dict.locale);
 
-                new Notice(t('notice.removed_dict', { locale: dict.locale }));
-                this.plugin.floatingWidget?.refresh();
+                    new Notice(t('notice.removed_dict', { locale: dict.locale }));
+                    this.plugin.floatingWidget?.refresh();
+                })();
             }
         );
     }
@@ -1250,7 +1258,7 @@ export class DictionaryManagerView {
                 if (opt.cloudInfo) {
                     const cloudBadge = nameDiv.createSpan({ cls: 'i18n-plus-cloud-badge' });
                     setIcon(cloudBadge, 'cloud-download');
-                    cloudBadge.setAttribute('aria-label', 'Available in Cloud');
+                    cloudBadge.setAttribute('aria-label', 'Available in cloud');
                     cloudBadge.addClass('i18n-plus-cloud-badge-style');
                 }
 

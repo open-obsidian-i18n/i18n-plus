@@ -183,7 +183,7 @@ export default class I18nPlusPlugin extends Plugin {
 		// If widget is collapsed, this expands it automatically via showView
 		const view = new DictionaryManagerView(this.app, this);
 		this.floatingWidget.showView(
-			(container) => view.render(container),
+			(container) => { void view.render(container); },
 			t('manager.title')
 		);
 	}
@@ -211,7 +211,7 @@ export default class I18nPlusPlugin extends Plugin {
 		const view = new DictionaryEditorView(this.app, this, pluginId || '', locale, isBuiltin, themeName);
 
 		this.floatingWidget.showView(
-			(container) => view.render(container),
+			(container) => { void view.render(container); },
 			themeName ? `${themeName} / ${locale}` : `${pluginId} / ${locale}`
 		);
 	}
