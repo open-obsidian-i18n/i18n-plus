@@ -145,21 +145,19 @@ export class DictionaryEditorView {
             return;
         }
 
-        // Simple confirmation using browser confirm
-        const saveFirst = confirm(
-            'You have unsaved changes.\n\n' +
-            'Click OK to save and close, or Cancel to discard changes.'
-        );
-
-        if (saveFirst) {
-            const saved = await this.saveDictionary();
-            if (saved) {
+        // Use a modal for confirmation
+        const modal = new ConfirmModal(this.app, t('editor.unsaved_changes_title') + '\n\n' + t('editor.unsaved_changes_message'), async (saveFirst) => {
+            if (saveFirst) {
+                const saved = await this.saveDictionary();
+                if (saved) {
+                    this.close();
+                }
+            } else {
+                // Discard changes and close
                 this.close();
             }
-        } else {
-            // Discard changes and close
-            this.close();
-        }
+        });
+        modal.open();
     }
 
     // ... render methods ...
@@ -531,8 +529,10 @@ export class DictionaryEditorView {
         setting.addButton(btn => btn
             .setButtonText(t('editor.export_json'))
             .setIcon('download')
-            .onClick(async () => {
-                await this.exportDictionary();
+            .onClick(() => {
+                void (async () => {
+                    await this.exportDictionary();
+                })();
             })
         );
 
@@ -585,7 +585,7 @@ export class DictionaryEditorView {
                                 dictVersion: '1.0.0'
                             };
                             // Trigger click again now that meta exists
-                            (btn as any).buttonEl.click();
+                            btn.buttonEl.click();
                         }
                     }
                 })
@@ -595,12 +595,14 @@ export class DictionaryEditorView {
         // Close button
         setting.addButton(btn => btn
             .setButtonText(t('editor.close'))
-            .onClick(async () => {
-                if (!this.state.isReadOnly && this.state.hasUnsavedChanges) {
-                    await this.confirmClose();
-                } else {
-                    this.close();
-                }
+            .onClick(() => {
+                void (async () => {
+                    if (!this.state.isReadOnly && this.state.hasUnsavedChanges) {
+                        await this.confirmClose();
+                    } else {
+                        this.close();
+                    }
+                })();
             })
         );
     }
@@ -644,12 +646,12 @@ export class DictionaryEditorView {
 
     private downloadBlob(blob: Blob, filename: string): void {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = activeDocument.createElement('a');
         a.href = url;
         a.download = filename;
-        document.body.appendChild(a);
+        activeDocument.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        activeDocument.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
 
@@ -771,78 +773,36 @@ export class DictionaryEditorView {
 }
 
 /**
- * Modal to edit dictionary metadata
- * Included here as helper
+ * Modal to confirm unsaved changes
  */
-class MetadataEditorModal extends Modal {
-    private meta: Partial<DictionaryMeta>;
-    private onSave: (meta: Partial<DictionaryMeta>) => void;
+class ConfirmModal extends Modal {
+    private message: string;
+    private onConfirm: (result: boolean) => void;
 
-    constructor(app: App, meta: Partial<DictionaryMeta>, onSave: (meta: Partial<DictionaryMeta>) => void) {
+    constructor(app: App, message: string, onConfirm: (result: boolean) => void) {
         super(app);
-        // Clone meta to avoid direct mutation until save
-        this.meta = { ...meta };
-        this.onSave = onSave;
+        this.message = message;
+        this.onConfirm = onConfirm;
     }
 
     onOpen() {
         const { contentEl } = this;
-        contentEl.addClass('i18n-plus-metadata-modal');
-
-        contentEl.createEl('h2', { text: t('metadata.title') });
-
-        // Read-only fields
-        new Setting(contentEl)
-            .setName(t('metadata.plugin_id'))
-            .setDesc(t('metadata.plugin_id_desc'))
-            .addText(text => text.setValue(this.meta.pluginId || '').setDisabled(true));
-
-        new Setting(contentEl)
-            .setName(t('metadata.locale'))
-            .setDesc(t('metadata.locale_desc'))
-            .addText(text => text.setValue(this.meta.locale || '').setDisabled(true));
-
-        // Editable fields
-        new Setting(contentEl)
-            .setName(t('metadata.dict_version'))
-            .setDesc(t('metadata.dict_version_desc'))
-            .addText(text => text
-                .setValue(this.meta.dictVersion || '1.0.0')
-                .onChange(val => this.meta.dictVersion = val));
-
-        new Setting(contentEl)
-            .setName(t('metadata.plugin_version'))
-            .setDesc(t('metadata.plugin_version_desc'))
-            .addText(text => text
-                .setValue(this.meta.pluginVersion || '')
-                .onChange(val => this.meta.pluginVersion = val));
-
-        new Setting(contentEl)
-            .setName(t('metadata.author'))
-            .setDesc(t('metadata.author_desc'))
-            .addText(text => text
-                .setValue(this.meta.author || '')
-                .onChange(val => this.meta.author = val));
-
-        new Setting(contentEl)
-            .setName(t('metadata.description'))
-            .setDesc(t('metadata.description_desc'))
-            .addTextArea(text => text
-                .setValue(this.meta.description || '')
-                .onChange(val => this.meta.description = val));
-
-        // Footer buttons
+        contentEl.createEl('h3', { text: 'Confirm' });
+        contentEl.createEl('p', { text: this.message, cls: 'i18n-plus-confirm-msg' });
+        
         const footer = contentEl.createDiv({ cls: 'modal-button-container' });
-
         new Setting(footer)
             .addButton(btn => btn
                 .setButtonText(t('action.cancel'))
-                .onClick(() => this.close()))
+                .onClick(() => {
+                    this.onConfirm(false);
+                    this.close();
+                }))
             .addButton(btn => btn
-                .setButtonText(t('metadata.update'))
+                .setButtonText('OK')
                 .setCta()
                 .onClick(() => {
-                    this.onSave(this.meta);
+                    this.onConfirm(true);
                     this.close();
                 }));
     }

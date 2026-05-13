@@ -138,14 +138,12 @@ export type LangKey = keyof typeof baseDictionary;
 // ============================================================================
 
 let translator: I18nTranslator<typeof baseDictionary> | null = null;
-let plugin: I18nPlusPlugin | null = null;
 
 /**
  * Initialize self-i18n for the i18n+ plugin.
  * This MUST be called at the very beginning of onload(), before any UI rendering.
  */
 export function initSelfI18n(pluginInstance: I18nPlusPlugin): void {
-    plugin = pluginInstance;
 
     // Create translator for i18n-plus itself
     translator = new I18nTranslator({

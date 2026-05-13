@@ -13,6 +13,7 @@ import { App, Modal, Setting, Notice, setIcon, SuggestModal } from 'obsidian';
 import type I18nPlusPlugin from '../main';
 import { getI18nPlusManager } from '../framework/global-api';
 import { DictionaryStore, DictionaryFileInfo, ThemeDictionaryFileInfo } from '../services/dictionary-store';
+import type { Dictionary } from '../framework/types';
 import { RemoteDictionaryInfo } from '../services/cloud-manager';
 import { OBSIDIAN_LOCALES } from '../framework/locales';
 import { t } from '../lang';
@@ -99,17 +100,9 @@ export class DictionaryManagerView {
         // Progress Bar (Cloud Fetching)
         if (this.plugin.cloudManager.isFetching) {
             const progressDiv = container.createDiv({ cls: 'i18n-plus-cloud-progress' });
-            progressDiv.style.padding = '4px 16px';
-            progressDiv.style.background = 'var(--background-secondary)';
-            progressDiv.style.borderBottom = '1px solid var(--background-modifier-border)';
-            progressDiv.style.display = 'flex';
-            progressDiv.style.alignItems = 'center';
-            progressDiv.style.gap = '10px';
 
             progressDiv.createEl('span', { text: '☁️ Syncing cloud data...', cls: 'i18n-plus-loading-text' });
             const progressBar = progressDiv.createEl('progress');
-            progressBar.style.flex = '1';
-            progressBar.style.height = '6px';
         }
 
         // Refresh Button (Icon Only)
@@ -351,9 +344,8 @@ export class DictionaryManagerView {
             manager.setGlobalLocale(dropdown.value);
             new Notice(t('notice.switched_locale', { pluginId, locale: dropdown.value }));
 
-            // Hot reload: if switching i18n-plus own language, use FloatingWidget refresh
             if (pluginId === 'i18n-plus') {
-                setTimeout(() => {
+                window.setTimeout(() => {
                     this.plugin.floatingWidget?.refresh();
                 }, 50);
             }
@@ -378,7 +370,7 @@ export class DictionaryManagerView {
                 const downloadBtn = controls.createEl('button', { cls: 'mod-cta' });
                 // Prominent button style
                 downloadBtn.textContent = t('action.download_locale', { locale: currentGlobalLocale }) || `Download ${currentGlobalLocale}`;
-                downloadBtn.style.marginRight = '8px';
+                downloadBtn.addClass('i18n-plus-btn-margin-right');
                 setIcon(downloadBtn, 'cloud-download');
                 downloadBtn.onclick = async (e) => {
                     e.stopPropagation();
@@ -459,7 +451,7 @@ export class DictionaryManagerView {
         else if (type === 'external') { labelKey = 'label.external'; badgeClass = 'external'; }
         else { labelKey = 'label.overlay'; badgeClass = 'external'; } // Overlay uses external style but different text
 
-        this.renderBadge(name, t(labelKey as any) || labelKey, badgeClass as any);
+        this.renderBadge(name, t(labelKey as Parameters<typeof t>[0]) || labelKey, badgeClass as 'builtin' | 'external' | 'version');
 
         // Version badge (from external file)
         if (dictFile && dictFile.dictVersion) {
@@ -586,7 +578,7 @@ export class DictionaryManagerView {
      * Import dictionary for specific plugin
      */
     private importDictionaryForPlugin(pluginId: string) {
-        const input = document.createElement('input');
+        const input = activeDocument.createElement('input');
         input.type = 'file';
         input.accept = '.json';
 
@@ -636,7 +628,7 @@ export class DictionaryManagerView {
         const blob = new Blob([json], { type: 'application/json' });
 
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = activeDocument.createElement('a');
         a.href = url;
         a.download = `${dict.pluginId}_${dict.locale}.json`;
         a.click();
@@ -658,7 +650,7 @@ export class DictionaryManagerView {
 
         // Try to get plugin version
         // @ts-ignore - accessing internal API
-        const pluginManifest = (this.app as any).plugins?.manifests?.[pluginId];
+        const pluginManifest = (this.app as App & { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[pluginId];
 
         if (!pluginManifest || !pluginManifest.version) {
             new Notice(`Failed to export: Version not found for plugin ${pluginId}`);
@@ -684,7 +676,7 @@ export class DictionaryManagerView {
         const blob = new Blob([json], { type: 'application/json' });
 
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = activeDocument.createElement('a');
         a.href = url;
         a.download = `${pluginId}_${locale}.json`;
         a.click();
@@ -754,10 +746,10 @@ export class DictionaryManagerView {
 
                 // Try to get plugin version
                 // @ts-ignore - accessing internal API
-                const pluginManifest = (this.app as any).plugins?.manifests?.[pluginId];
+                const pluginManifest = (this.app as App & { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[pluginId];
                 const pluginVersion = pluginManifest?.version || '0.0.0';
 
-                const newDict: any = {
+                const newDict: Dictionary = {
                     $meta: {
                         pluginId: pluginId,
                         pluginVersion: pluginVersion,
@@ -847,7 +839,7 @@ export class DictionaryManagerView {
         // Wait, `render` doesn't receive locale.
         // Let's check `I18nPlusManager` again.
 
-        // Let's try to access it via `(manager as any).currentLocale` temporary or better: 
+        // Let's try to access it via manager internal api or better: 
         // `manager.getTranslator('i18n-plus')?.getLocale()` as a proxy for global? 
         // Since setGlobalLocale sets all translators.
         // Let's use 'en' as default if unknown.
@@ -893,7 +885,7 @@ export class DictionaryManagerView {
             if (cloudMatch) {
                 const downloadBtn = controls.createEl('button', { cls: 'mod-cta' });
                 downloadBtn.textContent = t('action.download_locale', { locale: currentGlobalLocale }) || `Download ${currentGlobalLocale}`;
-                downloadBtn.style.marginRight = '8px';
+                downloadBtn.addClass('i18n-plus-btn-margin-right');
                 setIcon(downloadBtn, 'cloud-download');
                 downloadBtn.onclick = async (e) => {
                     e.stopPropagation();
@@ -952,7 +944,7 @@ export class DictionaryManagerView {
     private checkThemeUpdate(themeName: string, hasEn: boolean) {
         // If we don't have base dict, or we want to ensure it's up to date
         // We run this asynchronously to avoid blocking UI rendering
-        setTimeout(async () => {
+        window.setTimeout(async () => {
             try {
                 const updated = await this.store.ensureThemeBaseDictionaryUpToDate(themeName);
                 if (updated) {
@@ -1058,7 +1050,7 @@ export class DictionaryManagerView {
                 }
 
                 // Create new basic dict
-                const newDict: any = {
+                const newDict: Dictionary = {
                     $meta: {
                         themeName: themeName,
                         themeVersion: '0.0.0', // Placeholder
@@ -1085,7 +1077,7 @@ export class DictionaryManagerView {
      * Import dictionary for theme
      */
     private importDictionaryForTheme(themeName: string) {
-        const input = document.createElement('input');
+        const input = activeDocument.createElement('input');
         input.type = 'file';
         input.accept = '.json';
         input.onchange = async () => {
@@ -1139,7 +1131,7 @@ export class DictionaryManagerView {
             const blob = new Blob([json], { type: 'application/json' });
 
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            const a = activeDocument.createElement('a');
             a.href = url;
             a.download = `${dict.themeName}_${dict.locale}.json`;
             a.click();
@@ -1237,11 +1229,10 @@ export class DictionaryManagerView {
             attr: { placeholder: t('locale_suggest.placeholder') }
         });
 
-        setTimeout(() => searchInput.focus(), 50);
+        window.setTimeout(() => searchInput.focus(), 50);
 
         // List container
-        const list = modal.createDiv({ cls: 'i18n-plus-modal-content i18n-plus-locale-list' });
-        list.style.padding = '0';
+        const list = modal.createDiv({ cls: 'i18n-plus-modal-content i18n-plus-locale-list i18n-plus-p-0' });
 
         const renderList = (filter = '') => {
             list.empty();
@@ -1260,8 +1251,7 @@ export class DictionaryManagerView {
                     const cloudBadge = nameDiv.createSpan({ cls: 'i18n-plus-cloud-badge' });
                     setIcon(cloudBadge, 'cloud-download');
                     cloudBadge.setAttribute('aria-label', 'Available in Cloud');
-                    cloudBadge.style.marginLeft = '8px';
-                    cloudBadge.style.color = 'var(--text-accent)';
+                    cloudBadge.addClass('i18n-plus-cloud-badge-style');
                 }
 
                 item.createEl('small', { text: opt.code });

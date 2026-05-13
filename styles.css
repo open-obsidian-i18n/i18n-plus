@@ -1118,3 +1118,27 @@
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
+
+/* ==========================================================================
+   Utility Classes (Added for Compliance)
+   ========================================================================== */
+.i18n-plus-hidden {
+    display: none !important;
+}
+
+.i18n-plus-flex-display {
+    display: flex !important;
+}
+
+.i18n-plus-btn-margin-right {
+    margin-right: 8px;
+}
+
+.i18n-plus-p-0 {
+    padding: 0 !important;
+}
+
+.i18n-plus-cloud-badge-style {
+    margin-left: 8px;
+    color: var(--text-accent);
+}

@@ -183,7 +183,7 @@ export class I18nPlusManager implements I18nPlusAPI {
         const aliasIdsJson = dict['@@ids'];
         if (aliasIdsJson && typeof aliasIdsJson === 'string') {
             try {
-                const aliases = JSON.parse(aliasIdsJson);
+                const aliases = JSON.parse(aliasIdsJson) as unknown[];
                 if (Array.isArray(aliases)) {
                     for (const alias of aliases) {
                         if (typeof alias === 'string' && alias !== id) {

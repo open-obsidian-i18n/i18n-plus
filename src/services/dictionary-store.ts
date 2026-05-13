@@ -106,8 +106,7 @@ export class DictionaryStore {
      * Get all installed themes (folder names)
      */
     async listInstalledThemes(): Promise<string[]> {
-        // @ts-ignore - configDir is available in newer API
-        const configDir = this.app.vault.configDir || '.obsidian';
+        const configDir = this.app.vault.configDir;
         const themeDir = normalizePath(`${configDir}/themes`);
 
         if (!(await this.app.vault.adapter.exists(themeDir))) {
@@ -566,9 +565,7 @@ export class DictionaryStore {
      */
     async generateBaseThemeDictionary(themeName: string): Promise<ThemeDictionaryFileInfo | null> {
         // 1. Locate theme file
-        // Note: configDir might be .obsidian or custom.
-        // @ts-ignore
-        const configDir = this.app.vault.configDir || '.obsidian';
+        const configDir = this.app.vault.configDir;
         const themeDir = normalizePath(`${configDir}/themes/${themeName}`);
         const themePath = normalizePath(`${themeDir}/theme.css`);
         const manifestPath = normalizePath(`${themeDir}/manifest.json`);
@@ -592,7 +589,7 @@ export class DictionaryStore {
         try {
             if (await this.app.vault.adapter.exists(manifestPath)) {
                 const manifestContent = await this.app.vault.adapter.read(manifestPath);
-                const manifest = JSON.parse(manifestContent);
+                const manifest = JSON.parse(manifestContent) as { version?: string };
                 if (manifest.version) {
                     themeVersion = manifest.version;
                 }
@@ -638,8 +635,7 @@ export class DictionaryStore {
      */
     async ensureThemeBaseDictionaryUpToDate(themeName: string): Promise<boolean> {
         // 1. Get path
-        // @ts-ignore
-        const configDir = this.app.vault.configDir || '.obsidian';
+        const configDir = this.app.vault.configDir;
         const themePath = normalizePath(`${configDir}/themes/${themeName}/theme.css`);
 
         if (!await this.app.vault.adapter.exists(themePath)) {

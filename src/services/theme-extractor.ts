@@ -1,6 +1,22 @@
 
 import { parseYaml } from 'obsidian';
 
+interface StyleSettingsItem {
+    title?: string;
+    label?: string;
+    description?: string;
+    placeholder?: string;
+    options?: { label?: string }[] | Record<string, string>;
+    settings?: StyleSettingsItem[];
+}
+
+interface StyleSettingsConfig {
+    id?: string;
+    name?: string;
+    description?: string;
+    settings?: StyleSettingsItem[];
+}
+
 export class ThemeExtractor {
     /**
      * Compute simple hash of content
@@ -41,7 +57,7 @@ export class ThemeExtractor {
             yamlContent = yamlContent.replace(/\t/g, '  ');
 
             try {
-                const config = parseYaml(yamlContent);
+                const config = parseYaml(yamlContent) as StyleSettingsConfig;
                 // Capture the Theme ID defined in Style Settings
                 if (config && config.id) {
                     ids.push(config.id);
@@ -61,7 +77,7 @@ export class ThemeExtractor {
         return { strings, hash };
     }
 
-    private static traverseConfig(node: any, strings: Record<string, string>) {
+    private static traverseConfig(node: StyleSettingsConfig, strings: Record<string, string>) {
         if (!node) return;
 
         // Top level fields
@@ -76,7 +92,7 @@ export class ThemeExtractor {
         }
     }
 
-    private static traverseItem(item: any, strings: Record<string, string>) {
+    private static traverseItem(item: StyleSettingsItem, strings: Record<string, string>) {
         if (!item) return;
 
         // Title / Label

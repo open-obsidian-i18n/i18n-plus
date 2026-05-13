@@ -120,7 +120,7 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
      * Supports {name} and {{name}} formats
      */
     private interpolate(text: string, params: Record<string, string | number>): string {
-        return text.replace(/\{\{?(\w+)\}?\}/g, (match, key) => {
+        return text.replace(/\{\{?(\w+)\}?\}/g, (match: string, key: string) => {
             const value = params[key];
             return value !== undefined ? String(value) : match;
         });

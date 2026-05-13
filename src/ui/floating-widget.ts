@@ -1,4 +1,4 @@
-import { App, setIcon, setTooltip, Platform } from 'obsidian';
+import { App, setIcon, setTooltip } from 'obsidian';
 import type I18nPlusPlugin from '../main';
 import { t } from '../lang';
 
@@ -42,10 +42,10 @@ export class I18nFloatingWidget {
 
     private createWidget() {
         // Main container (fixed position)
-        this.containerEl = document.body.createDiv({ cls: 'i18n-plus-floating-widget' });
+        this.containerEl = activeDocument.body.createDiv({ cls: 'i18n-plus-floating-widget' });
 
         // Initial state: hidden (opened via command/ribbon)
-        this.containerEl.style.display = 'none';
+        this.containerEl.addClass('i18n-plus-hidden');
 
         // Calculate center position (assuming default panel size approx 800x600)
         // We set styles directly, assuming panel mode is default target size
@@ -72,7 +72,7 @@ export class I18nFloatingWidget {
 
         // === Panel Mode ===
         this.panelEl = this.containerEl.createDiv({ cls: 'i18n-plus-fw-panel' });
-        this.panelEl.style.display = 'none';
+        this.panelEl.addClass('i18n-plus-hidden');
 
         // Header
         const header = this.panelEl.createDiv({ cls: 'i18n-plus-fw-header' });
@@ -136,19 +136,27 @@ export class I18nFloatingWidget {
     /** Ensure widget is visible in DOM */
     show() {
         if (this.containerEl) {
-            this.containerEl.style.display = 'flex';
+            this.containerEl.removeClass('i18n-plus-hidden');
+            this.containerEl.addClass('i18n-plus-flex-display');
         }
     }
 
     /** Hide widget completely */
     hide() {
         if (this.containerEl) {
-            this.containerEl.style.display = 'none';
+            this.containerEl.removeClass('i18n-plus-flex-display');
+            this.containerEl.addClass('i18n-plus-hidden');
         }
         // Reset to collapsed state internally so next open expands properly if needed
         this.isExpanded = false;
-        if (this.panelEl) this.panelEl.style.display = 'none';
-        if (this.bubbleEl) this.bubbleEl.style.display = 'flex';
+        if (this.panelEl) {
+            this.panelEl.removeClass('i18n-plus-flex-display');
+            this.panelEl.addClass('i18n-plus-hidden');
+        }
+        if (this.bubbleEl) {
+            this.bubbleEl.removeClass('i18n-plus-hidden');
+            this.bubbleEl.addClass('i18n-plus-flex-display');
+        }
     }
 
     private renderContent() {
@@ -160,8 +168,10 @@ export class I18nFloatingWidget {
 
     expand() {
         this.isExpanded = true;
-        this.bubbleEl.style.display = 'none';
-        this.panelEl.style.display = 'flex';
+        this.bubbleEl.removeClass('i18n-plus-flex-display');
+        this.bubbleEl.addClass('i18n-plus-hidden');
+        this.panelEl.removeClass('i18n-plus-hidden');
+        this.panelEl.addClass('i18n-plus-flex-display');
 
         // Re-clamp position if off-screen upon expansion (safety check)
         this.ensureOnScreen();
@@ -169,8 +179,10 @@ export class I18nFloatingWidget {
 
     collapse() {
         this.isExpanded = false;
-        this.panelEl.style.display = 'none';
-        this.bubbleEl.style.display = 'flex';
+        this.panelEl.removeClass('i18n-plus-flex-display');
+        this.panelEl.addClass('i18n-plus-hidden');
+        this.bubbleEl.removeClass('i18n-plus-hidden');
+        this.bubbleEl.addClass('i18n-plus-flex-display');
     }
 
     private ensureOnScreen() {
@@ -213,8 +225,8 @@ export class I18nFloatingWidget {
         this.initialLeft = rect.left;
         this.initialTop = rect.top;
 
-        document.addEventListener('mousemove', this.onDragMove);
-        document.addEventListener('mouseup', this.onDragEnd);
+        activeDocument.addEventListener('mousemove', this.onDragMove);
+        activeDocument.addEventListener('mouseup', this.onDragEnd);
 
         e.preventDefault();
         e.stopPropagation();
@@ -247,7 +259,7 @@ export class I18nFloatingWidget {
 
     private onDragEnd = () => {
         this.isDragging = false;
-        document.removeEventListener('mousemove', this.onDragMove);
-        document.removeEventListener('mouseup', this.onDragEnd);
+        activeDocument.removeEventListener('mousemove', this.onDragMove);
+        activeDocument.removeEventListener('mouseup', this.onDragEnd);
     };
 }

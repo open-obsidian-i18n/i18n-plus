@@ -147,7 +147,7 @@ export default class I18nPlusPlugin extends Plugin {
 		}
 
 		// Delayed auto-load of installed dictionaries (wait for other plugins to register)
-		setTimeout(() => {
+		window.setTimeout(() => {
 			void this.dictionaryStore.autoLoadDictionaries().then(count => {
 				if (count > 0 && this.settings.debugMode) {
 					console.debug(`[i18n-plus] Auto-loaded ${count} dictionaries on startup`);

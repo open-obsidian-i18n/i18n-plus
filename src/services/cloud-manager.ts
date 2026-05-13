@@ -64,9 +64,9 @@ export class CloudManager {
                     throw new Error(`Failed to fetch manifest: ${response.status}`);
                 }
 
-                const manifest = response.json;
-                let plugins = (manifest.plugins || []) as RemoteDictionaryInfo[];
-                let themes = (manifest.themes || []) as RemoteDictionaryInfo[];
+                const manifest = response.json as { plugins?: RemoteDictionaryInfo[], themes?: RemoteDictionaryInfo[] };
+                let plugins = manifest.plugins || [];
+                let themes = manifest.themes || [];
 
                 // URL Rewrite for Connectivity (GitHub Raw -> jsDelivr)
                 const rewriteUrl = (url: string) => {
