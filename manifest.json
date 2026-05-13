@@ -1,6 +1,6 @@
 {
-	"id": "i18n-plus",
-	"name": "i18n+",
+	"id": "internationalization-plus",
+	"name": "lang-plus",
 	"version": "0.1.1",
 	"minAppVersion": "0.15.0",
 	"description": "Manage translations for plugins with hot-reload support and crowdsourced dictionaries.",

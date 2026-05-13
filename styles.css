@@ -19,6 +19,36 @@
     margin-bottom: 15px;
 }
 
+/* Tabs */
+.i18n-plus-tabs {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.i18n-plus-tab-btn {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 8px 12px;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+    margin: 0;
+}
+
+.i18n-plus-tab-btn:hover {
+    color: var(--text-normal);
+}
+
+.i18n-plus-tab-btn.active {
+    color: var(--text-normal);
+    border-bottom-color: var(--interactive-accent);
+}
+
 .i18n-plus-manager h3 {
     margin-top: 25px;
     margin-bottom: 15px;
@@ -120,13 +150,13 @@
 }
 
 .i18n-plus-badge-builtin {
-    background-color: var(--color-blue-filter);
-    color: white;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
 }
 
 .i18n-plus-badge-external {
-    background-color: var(--color-green-filter);
-    color: white;
+    background-color: var(--color-green);
+    color: var(--text-on-accent);
 }
 
 .i18n-plus-badge-version {
@@ -193,4 +223,898 @@
 
 .i18n-plus-orphan-list .setting-item {
     padding: 5px 0;
+}
+
+/* ============================================================================
+   Dictionary Editor Modal Styles
+   ============================================================================ */
+
+.modal:has(.i18n-plus-editor) {
+    width: 90vw;
+    max-width: 900px;
+}
+
+.i18n-plus-editor {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Changed from 70vh for widget compatibility */
+    max-height: 100%;
+    /* Changed from 600px */
+}
+
+/* Editor Header */
+.i18n-plus-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.i18n-plus-editor-icon {
+    color: var(--interactive-accent);
+}
+
+.i18n-plus-editor-title-text {
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.i18n-plus-editor-badges {
+    display: flex;
+    gap: 8px;
+}
+
+.i18n-plus-editor-back-btn {
+    margin-right: 15px;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.i18n-plus-editor-back-btn:hover {
+    color: var(--text-normal);
+}
+
+.i18n-plus-badge-custom {
+    background-color: var(--color-green);
+    color: white;
+}
+
+.i18n-plus-badge-readonly {
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
+}
+
+/* Editor Toolbar */
+.i18n-plus-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: var(--background-primary-alt);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    flex: 1;
+    max-width: 300px;
+}
+
+.i18n-plus-editor-search-icon {
+    color: var(--text-muted);
+}
+
+.i18n-plus-editor-search-input {
+    border: none;
+    background: transparent;
+    flex: 1;
+    font-size: 14px;
+    outline: none;
+}
+
+.i18n-plus-editor-stats {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* Editor Content */
+.i18n-plus-editor-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.i18n-plus-editor-table-container {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.i18n-plus-editor-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Editor Table */
+.i18n-plus-editor-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.i18n-plus-editor-table th {
+    position: sticky;
+    top: 0;
+    background: var(--background-secondary);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--background-modifier-border);
+    z-index: 10;
+}
+
+.i18n-plus-editor-th-key {
+    width: 40%;
+}
+
+.i18n-plus-editor-th-value {
+    width: 60%;
+}
+
+.i18n-plus-editor-row {
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-row:hover {
+    background: var(--background-modifier-hover);
+}
+
+.i18n-plus-editor-cell-key,
+.i18n-plus-editor-cell-value {
+    padding: 10px 16px;
+    vertical-align: top;
+}
+
+.i18n-plus-editor-cell-key {
+    font-family: var(--font-monospace);
+    font-size: 13px;
+    color: var(--text-accent);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.i18n-plus-editor-key {
+    word-break: break-all;
+}
+
+.i18n-plus-editor-var-warning {
+    color: var(--color-yellow);
+    flex-shrink: 0;
+    cursor: help;
+}
+
+.i18n-plus-editor-cell-value {
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.i18n-plus-editor-var-highlight {
+    background: var(--color-yellow);
+    color: var(--text-on-accent);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+}
+
+/* Editor Footer */
+.i18n-plus-editor-footer {
+    padding: 12px 20px;
+    background: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.i18n-plus-editor-footer .setting-item {
+    border: none;
+    padding: 0;
+}
+
+.i18n-plus-editor-footer .setting-item-control {
+    gap: 10px;
+}
+
+/* ============================================================================
+   Editor Mode Styles (Phase 2)
+   ============================================================================ */
+
+/* Editable textarea in cells */
+.i18n-plus-editor-textarea {
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.i18n-plus-editor-textarea:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* Row states */
+.i18n-plus-editor-row.is-edited {
+    background: var(--background-modifier-success);
+}
+
+.i18n-plus-editor-row.has-error {
+    background: var(--background-modifier-error);
+}
+
+.i18n-plus-editor-row.is-edited .i18n-plus-editor-textarea {
+    border-color: var(--color-green);
+}
+
+.i18n-plus-editor-row.has-error .i18n-plus-editor-textarea {
+    border-color: var(--color-red);
+}
+
+/* Error icon */
+.i18n-plus-editor-error-icon {
+    color: var(--color-red);
+    flex-shrink: 0;
+    cursor: help;
+    margin-left: 4px;
+}
+
+/* Disabled save button */
+.i18n-plus-editor-footer button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Confirm Modal */
+.i18n-plus-confirm-modal {
+    text-align: center;
+    padding: 20px;
+}
+
+.i18n-plus-confirm-modal h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.i18n-plus-confirm-modal p {
+    color: var(--text-muted);
+    margin-bottom: 30px;
+}
+
+.i18n-plus-confirm-modal .modal-button-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.i18n-plus-confirm-modal .modal-button-container button {
+    min-width: 80px;
+}
+
+/* ============================================================================
+   Row Header Layout (for editable translation mode)
+   ============================================================================ */
+
+/* Key header row - spans full width */
+.i18n-plus-editor-key-row {
+    background: var(--background-secondary-alt);
+}
+
+.i18n-plus-editor-cell-key-header {
+    padding: 6px 12px;
+    border-bottom: none;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.i18n-plus-editor-cell-key-header .i18n-plus-editor-key {
+    font-family: var(--font-monospace);
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+/* Content row - source and translation columns */
+.i18n-plus-editor-content-row {
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-content-row:hover {
+    background: var(--background-modifier-hover);
+}
+
+/* Source cell (left column, read-only) */
+.i18n-plus-editor-cell-source {
+    width: 40%;
+    padding: 8px 12px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+    font-size: 13px;
+    line-height: 1.5;
+    vertical-align: top;
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-cell-source .i18n-plus-editor-var-highlight {
+    background: var(--background-modifier-message);
+    color: var(--color-orange);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+}
+
+.i18n-plus-editor-no-source {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+/* Translation cell (right column, editable) */
+.i18n-plus-editor-cell-translation {
+    width: 60%;
+    padding: 8px 12px;
+    vertical-align: top;
+}
+
+/* Edited state for content row */
+.i18n-plus-editor-content-row.is-edited {
+    background: var(--background-modifier-success);
+}
+
+.i18n-plus-editor-content-row.has-error {
+    background: var(--background-modifier-error);
+}
+
+.i18n-plus-editor-content-row.is-edited .i18n-plus-editor-textarea {
+    border-color: var(--color-green);
+}
+
+.i18n-plus-editor-content-row.has-error .i18n-plus-editor-textarea {
+    border-color: var(--color-red);
+}
+
+/* Table header for editable mode */
+.i18n-plus-editor-th-source,
+.i18n-plus-editor-th-translation {
+    padding: 10px 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--background-secondary);
+}
+
+.i18n-plus-editor-th-source {
+    width: 40%;
+    border-right: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-editor-th-translation {
+    width: 60%;
+}
+
+/* ============================================================================
+   Dictionary Manager Header
+   ============================================================================ */
+
+.i18n-plus-manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-header-left {
+    flex: 1;
+}
+
+.i18n-plus-header-title {
+    margin: 0 !important;
+    font-size: 1.5em;
+    font-weight: 700;
+}
+
+.i18n-plus-header-subtitle {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.i18n-plus-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 16px;
+}
+
+.i18n-plus-search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.i18n-plus-search-input {
+    width: 200px;
+    height: 30px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    font-size: 13px;
+    transition: width 0.3s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.i18n-plus-search-input:focus {
+    width: 260px;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.i18n-plus-refresh-btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.i18n-plus-refresh-btn:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.i18n-plus-cloud-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.i18n-plus-cloud-btn {
+    color: var(--text-accent);
+    opacity: 0.8;
+    transition: all 0.2s ease;
+}
+
+.i18n-plus-cloud-btn:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    color: var(--interactive-accent);
+}
+
+.i18n-plus-cloud-btn.is-update {
+    color: var(--text-success);
+}
+
+.i18n-plus-cloud-btn.is-update:hover {
+    color: #4caf50;
+}
+
+.i18n-plus-cloud-btn.is-loading {
+    animation: i18n-plus-spin 1s linear infinite;
+}
+
+@keyframes i18n-plus-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Placeholder style for empty translations */
+.i18n-plus-editor-textarea::placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+/* ============================================================================
+   Floating Widget Styles
+   ============================================================================ */
+
+.i18n-plus-floating-widget {
+    position: fixed;
+    z-index: 5000;
+    /* High z-index */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 14px;
+    font-family: var(--font-interface);
+}
+
+/* Bubble Mode */
+.i18n-plus-fw-bubble {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.i18n-plus-fw-bubble:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.i18n-plus-fw-bubble:active {
+    cursor: grabbing;
+}
+
+.i18n-plus-fw-bubble svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Panel Mode */
+/* Panel Mode */
+.i18n-plus-fw-panel {
+    width: 900px;
+    /* Wider default width */
+    height: 600px;
+    /* Default height */
+    min-width: 400px;
+    min-height: 300px;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    resize: both;
+    /* Allow resizing */
+}
+
+/* Header */
+.i18n-plus-fw-header {
+    height: 40px;
+    padding: 0 12px;
+    background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: grab;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.i18n-plus-fw-header:active {
+    cursor: grabbing;
+}
+
+.i18n-plus-fw-title {
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.i18n-plus-fw-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.i18n-plus-fw-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.i18n-plus-fw-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* Content */
+.i18n-plus-fw-content {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--background-primary);
+    position: relative;
+    padding: 24px;
+    /* Increased padding */
+    box-sizing: border-box;
+}
+
+/* Ensure headings within content have proper spacing */
+.i18n-plus-fw-content h2,
+.i18n-plus-fw-content h3 {
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+/* Manager specific layout spacing */
+.i18n-plus-manager {
+    gap: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.i18n-plus-card {
+    margin-bottom: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background-color: var(--background-primary);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.i18n-plus-card:hover {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================================================
+   Metadata Editor View Styles
+   ============================================================================ */
+
+.i18n-plus-metadata-view {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px 24px;
+}
+
+.i18n-plus-metadata-header {
+    margin-bottom: 8px;
+}
+
+.i18n-plus-metadata-title {
+    margin: 0 0 8px 0;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.i18n-plus-metadata-desc {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.i18n-plus-metadata-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.i18n-plus-metadata-form .setting-item {
+    border-top: none;
+    padding: 12px 0;
+}
+
+.i18n-plus-metadata-form .setting-item:first-child {
+    padding-top: 0;
+}
+
+.i18n-plus-metadata-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.i18n-plus-metadata-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-metadata-footer .setting-item {
+    border: none;
+    padding: 0;
+}
+
+.i18n-plus-metadata-footer .setting-item-control {
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Custom Locale Overlay */
+.i18n-plus-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.i18n-plus-modal {
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    width: 300px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.i18n-plus-modal-header {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+}
+
+.i18n-plus-modal-search {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.i18n-plus-modal-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.i18n-plus-modal-item {
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+}
+
+.i18n-plus-modal-item:hover,
+.i18n-plus-modal-item.is-selected {
+    background-color: var(--background-modifier-hover);
+}
+
+.i18n-plus-modal-item small {
+    color: var(--text-muted);
+}
+
+/* ============================================================================
+   In-View Overlay (Custom Modal)
+   ============================================================================ */
+
+.i18n-plus-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 6000;
+    /* Higher than content, inside widget */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.i18n-plus-modal {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    min-width: 300px;
+    max-width: 80%;
+    max-height: 80%;
+    display: flex;
+    flex-direction: column;
+}
+
+.i18n-plus-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-size: 1.1em;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.i18n-plus-modal-content {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.i18n-plus-modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background-color: var(--background-secondary);
+    border-radius: 0 0 10px 10px;
+}
+
+/* Locale Selector Specifics */
+.i18n-plus-locale-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 10px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+}
+
+.i18n-plus-locale-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.i18n-plus-locale-item:last-child {
+    border-bottom: none;
+}
+
+.i18n-plus-locale-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.i18n-plus-locale-item.is-selected {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
 }

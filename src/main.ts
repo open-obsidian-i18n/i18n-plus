@@ -8,11 +8,17 @@ import { Notice, Plugin } from 'obsidian';
 import { initGlobalAPI, destroyGlobalAPI, getI18nPlusManager } from './framework';
 import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab } from './settings';
 import { DictionaryStore } from './services/dictionary-store';
-import { DictionaryManagerModal } from './ui/dictionary-manager';
+import { CloudManager } from './services/cloud-manager';
+import { DictionaryManagerView } from './ui/dictionary-manager';
+import { DictionaryEditorView } from './ui/dictionary-editor-modal';
+import { I18nFloatingWidget } from './ui/floating-widget';
+import { initSelfI18n, t } from './lang';
 
 export default class I18nPlusPlugin extends Plugin {
 	settings: I18nPlusSettings;
 	dictionaryStore: DictionaryStore;
+	cloudManager: CloudManager;
+	floatingWidget: I18nFloatingWidget | null = null;
 
 	async onload() {
 		if (this.settings?.debugMode) console.debug('[i18n-plus] Loading plugin...');
@@ -21,6 +27,13 @@ export default class I18nPlusPlugin extends Plugin {
 
 		// Initialize dictionary store (must be before initGlobalAPI as event listeners need it)
 		this.dictionaryStore = new DictionaryStore(this.app, this);
+
+		// Initialize Cloud Manager
+		this.cloudManager = new CloudManager();
+
+		// Initialize Floating Widget
+		this.floatingWidget = new I18nFloatingWidget(this.app, this);
+		this.floatingWidget.onload();
 
 		// Get manager instance and set up event listeners first
 		// This ensures we capture plugin registrations when initGlobalAPI triggers i18n-plus:ready
@@ -72,6 +85,9 @@ export default class I18nPlusPlugin extends Plugin {
 		// Initialize global API (this triggers i18n-plus:ready event, causing other plugins to register)
 		initGlobalAPI();
 
+		// Self-i18n initialization (MUST be after initGlobalAPI so window.i18nPlus is available)
+		initSelfI18n(this);
+
 		// Add settings tab
 		this.addSettingTab(new I18nPlusSettingTab(this.app, this));
 
@@ -80,7 +96,7 @@ export default class I18nPlusPlugin extends Plugin {
 			id: 'open-dictionary-manager',
 			name: 'Open dictionary manager',
 			callback: () => {
-				new DictionaryManagerModal(this.app, this).open();
+				this.showDictionaryManager();
 			}
 		});
 
@@ -91,9 +107,9 @@ export default class I18nPlusPlugin extends Plugin {
 				const manager = getI18nPlusManager();
 				const plugins = manager.getRegisteredPlugins();
 				if (plugins.length === 0) {
-					new Notice('No plugins registered to i18n-plus');
+					new Notice(t('notice.no_plugins'));
 				} else {
-					new Notice(`Registered: ${plugins.join(', ')}`);
+					new Notice(t('notice.registered_plugins', { plugins: plugins.join(', ') }));
 				}
 			}
 		});
@@ -103,15 +119,32 @@ export default class I18nPlusPlugin extends Plugin {
 			name: 'Reload all dictionaries',
 			callback: () => {
 				void this.dictionaryStore.autoLoadDictionaries().then(count => {
-					new Notice(`Loaded ${count} dictionaries`);
+					new Notice(t('notice.loaded_dicts', { count }));
 				});
 			}
 		});
 
 		// Add ribbon icon - click to open dictionary manager
-		this.addRibbonIcon('languages', 'I18n plus dictionary manager', () => {
-			new DictionaryManagerModal(this.app, this).open();
+		this.addRibbonIcon('languages', t('manager.title'), () => {
+			this.showDictionaryManager();
 		});
+
+
+
+		// Initialize Global Locale immediately
+		if (this.settings.currentLocale) {
+			manager.setGlobalLocale(this.settings.currentLocale);
+			if (this.settings.debugMode) {
+				console.debug(`[i18n-plus] Restored locale: ${this.settings.currentLocale}`);
+			}
+		} else {
+			// Auto-detect if no setting
+			const currentLang = window.moment?.locale() || 'en';
+			manager.setGlobalLocale(currentLang);
+			if (this.settings.debugMode) {
+				console.debug(`[i18n-plus] Auto-detected global locale: ${currentLang}`);
+			}
+		}
 
 		// Delayed auto-load of installed dictionaries (wait for other plugins to register)
 		setTimeout(() => {
@@ -120,13 +153,15 @@ export default class I18nPlusPlugin extends Plugin {
 					console.debug(`[i18n-plus] Auto-loaded ${count} dictionaries on startup`);
 				}
 
-				// Restore saved locale setting
-				if (this.settings.currentLocale) {
-					manager.setGlobalLocale(this.settings.currentLocale);
-					if (this.settings.debugMode) {
-						console.debug(`[i18n-plus] Restored locale: ${this.settings.currentLocale}`);
+				// Fetch cloud dictionary manifest
+				void this.cloudManager.fetchRemoteManifest();
+
+				// Auto-load theme dictionaries
+				void this.dictionaryStore.autoLoadThemeDictionaries().then(count => {
+					if (count > 0 && this.settings.debugMode) {
+						console.debug(`[i18n-plus] Auto-loaded ${count} theme dictionaries`);
 					}
-				}
+				});
 			});
 		}, 3000);
 
@@ -134,8 +169,51 @@ export default class I18nPlusPlugin extends Plugin {
 	}
 
 	onunload() {
+		if (this.floatingWidget) {
+			this.floatingWidget.onunload();
+			this.floatingWidget = null;
+		}
 		destroyGlobalAPI();
 		if (this.settings.debugMode) console.debug('[i18n-plus] Plugin unloaded');
+	}
+
+	showDictionaryManager() {
+		if (!this.floatingWidget) return;
+
+		// If widget is collapsed, this expands it automatically via showView
+		const view = new DictionaryManagerView(this.app, this);
+		this.floatingWidget.showView(
+			(container) => view.render(container),
+			t('manager.title')
+		);
+	}
+
+	public showDictionaryEditor(pluginId: string | null, locale: string, themeName?: string, isBuiltinOverride?: boolean): void {
+		if (!this.floatingWidget) return;
+
+		// If themeName is provided, we default to "external" (editable) unless overridden.
+		// If isBuiltinOverride is provided, use it.
+
+		const manager = getI18nPlusManager();
+		let isBuiltin = isBuiltinOverride;
+
+		if (isBuiltin === undefined) {
+			if (pluginId) {
+				const translator = manager.getTranslator(pluginId);
+				isBuiltin = translator?.getBuiltinLocales().includes(locale) || false;
+			} else {
+				// Themes default to false (editable) unless specified
+				isBuiltin = false;
+			}
+		}
+
+		// Pass themeName to constructor
+		const view = new DictionaryEditorView(this.app, this, pluginId || '', locale, isBuiltin, themeName);
+
+		this.floatingWidget.showView(
+			(container) => view.render(container),
+			themeName ? `${themeName} / ${locale}` : `${pluginId} / ${locale}`
+		);
 	}
 
 	async loadSettings() {
