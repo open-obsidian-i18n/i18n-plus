@@ -45,7 +45,7 @@ export class I18nFloatingWidget {
         this.containerEl = activeDocument.body.createDiv({ cls: 'i18n-plus-floating-widget' });
 
         // Initial state: hidden (opened via command/ribbon)
-        this.containerEl.setCssProps({ 'display': 'none' });
+        this.containerEl.addClass('i18n-plus-hidden');
 
         // Calculate center position (assuming default panel size approx 800x600)
         // We set styles directly, assuming panel mode is default target size
@@ -72,7 +72,7 @@ export class I18nFloatingWidget {
 
         // === Panel Mode ===
         this.panelEl = this.containerEl.createDiv({ cls: 'i18n-plus-fw-panel' });
-        this.panelEl.setCssProps({ 'display': 'none' });
+        this.panelEl.addClass('i18n-plus-hidden');
 
         // Header
         const header = this.panelEl.createDiv({ cls: 'i18n-plus-fw-header' });
@@ -137,22 +137,26 @@ export class I18nFloatingWidget {
     /** Ensure widget is visible in DOM */
     show() {
         if (this.containerEl) {
-            this.containerEl.setCssProps({ 'display': 'flex' });
+            this.containerEl.removeClass('i18n-plus-hidden');
+            this.containerEl.addClass('i18n-plus-flex-display');
         }
     }
 
     /** Hide widget completely */
     hide() {
         if (this.containerEl) {
-            this.containerEl.setCssProps({ 'display': 'none' });
+            this.containerEl.removeClass('i18n-plus-flex-display');
+            this.containerEl.addClass('i18n-plus-hidden');
         }
         // Reset to collapsed state internally so next open expands properly if needed
         this.isExpanded = false;
         if (this.panelEl) {
-            this.panelEl.setCssProps({ 'display': 'none' });
+            this.panelEl.removeClass('i18n-plus-flex-display');
+            this.panelEl.addClass('i18n-plus-hidden');
         }
         if (this.bubbleEl) {
-            this.bubbleEl.setCssProps({ 'display': 'flex' });
+            this.bubbleEl.removeClass('i18n-plus-hidden');
+            this.bubbleEl.addClass('i18n-plus-flex-display');
         }
     }
 
@@ -165,8 +169,10 @@ export class I18nFloatingWidget {
 
     expand() {
         this.isExpanded = true;
-        this.bubbleEl.setCssProps({ 'display': 'none' });
-        this.panelEl.setCssProps({ 'display': 'flex' });
+        this.bubbleEl.removeClass('i18n-plus-flex-display');
+        this.bubbleEl.addClass('i18n-plus-hidden');
+        this.panelEl.removeClass('i18n-plus-hidden');
+        this.panelEl.addClass('i18n-plus-flex-display');
 
         // Re-clamp position if off-screen upon expansion (safety check)
         this.ensureOnScreen();
@@ -174,8 +180,10 @@ export class I18nFloatingWidget {
 
     collapse() {
         this.isExpanded = false;
-        this.panelEl.setCssProps({ 'display': 'none' });
-        this.bubbleEl.setCssProps({ 'display': 'flex' });
+        this.panelEl.removeClass('i18n-plus-flex-display');
+        this.panelEl.addClass('i18n-plus-hidden');
+        this.bubbleEl.removeClass('i18n-plus-hidden');
+        this.bubbleEl.addClass('i18n-plus-flex-display');
     }
 
     private ensureOnScreen() {

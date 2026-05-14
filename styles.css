@@ -1051,7 +1051,16 @@
 /* ==========================================================================
    Utility Classes (Added for Compliance)
    ========================================================================== */
-/* Utility classes for display removed, using inline styles instead */
+/* Utility classes for display */
+.i18n-plus-floating-widget.i18n-plus-hidden,
+.i18n-plus-floating-widget .i18n-plus-hidden {
+    display: none;
+}
+
+.i18n-plus-floating-widget.i18n-plus-flex-display,
+.i18n-plus-floating-widget .i18n-plus-flex-display {
+    display: flex;
+}
 
 .i18n-plus-btn-margin-right {
     margin-right: 8px;
