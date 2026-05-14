@@ -1240,7 +1240,7 @@ export class DictionaryManagerView {
         window.setTimeout(() => searchInput.focus(), 50);
 
         // List container
-        const list = modal.createDiv({ cls: 'i18n-plus-modal-content i18n-plus-locale-list i18n-plus-p-0' });
+        const list = modal.createDiv({ cls: 'i18n-plus-modal-content i18n-plus-locale-list' });
 
         const renderList = (filter = '') => {
             list.empty();
