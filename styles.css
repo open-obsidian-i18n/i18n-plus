@@ -1074,3 +1074,49 @@
     margin-left: 8px;
     color: var(--text-accent);
 }
+/* ============================================================================
+   ItemView / Popout Window Styles (Phase 4)
+   ============================================================================ */
+
+/* Editor view fills the entire popout window */
+.i18n-plus-editor-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* The editor content area should flex to fill space */
+.i18n-plus-editor-view .i18n-plus-editor-content {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Editor view table should fill available width */
+.i18n-plus-editor-view .i18n-plus-editor-table-container {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* More compact padding in popout mode (more screen space) */
+.i18n-plus-editor-view .i18n-plus-editor-header {
+    padding: 12px 16px;
+}
+
+.i18n-plus-editor-view .i18n-plus-editor-toolbar {
+    padding: 8px 16px;
+}
+
+.i18n-plus-editor-view .i18n-plus-editor-footer {
+    padding: 8px 16px;
+}
+
+/* View container styling for empty state */
+.i18n-plus-editor-view .i18n-plus-editor-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    min-height: 200px;
+}

@@ -60,7 +60,7 @@ Plugin/Theme/Configurable Extension Developers
         ↓
 i18n-plus Framework
 ├── Global Dictionary Manager (Users can import/export translations)
-├── Hot Reload (Switch languages without restarting)
+├── Hot Reload (i18n+ refreshes dynamically; other plugins restart automatically to apply new locale)
 └── Cloud Dictionary Distribution (Community translations automatically synced)
         ↓
 Community Translators (Collaborate via platforms like Crowdin)
@@ -78,6 +78,7 @@ i18n-plus is both a **framework** and an **Obsidian plugin**:
     -   Visually manage adapted extensions.
     -   Dynamically load/unload cloud or local dictionaries.
     -   Built-in local dictionary editor.
+    -   **Per-plugin language switching**: Set language preferences independently for each plugin — i18n+ refreshes its own UI dynamically, while adapted extensions automatically restart to apply the new locale immediately.
     -   Detect cloud dictionaries for installed extensions (interface reserved).
 
 -   **Verification**: Tested on *Blur Mode* and *Better Plugins Manager* plugins.
@@ -156,6 +157,7 @@ Possible reasons:
 ### Completed
 
 -   i18n-plus core framework (adapter, manager, hot reload)
+-   **Per-plugin locale switching**: Each plugin gets independent language preference; i18n+ refreshes dynamically, third-party plugins restart automatically on switch
 -   Automated migration tools (codemod, key extraction)
 -   Visual Dictionary Manager UI
 

@@ -130,6 +130,18 @@ export class I18nPlusManager implements I18nPlusAPI {
     }
 
     /**
+     * Set locale for a specific plugin and emit a per-plugin event.
+     * This allows the plugin (or its host) to react to the change.
+     */
+    setPluginLocale(pluginId: string, locale: string): void {
+        const translator = this.translators.get(pluginId);
+        if (translator) {
+            translator.setLocale(locale);
+            this.emit('plugin-locale-changed', pluginId, locale);
+        }
+    }
+
+    /**
      * Listen to events
      */
     on(event: string, callback: EventCallback): void {

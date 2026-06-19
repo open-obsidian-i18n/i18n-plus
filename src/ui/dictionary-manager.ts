@@ -27,11 +27,24 @@ export class DictionaryManagerView {
     private plugin: I18nPlusPlugin;
     private store: DictionaryStore;
     private containerEl: HTMLElement;
+    /** Optional navigation target for popout window (internal routing). */
+    private navigationTarget: {
+        navigateToEditor: (pluginId: string, locale: string, isBuiltin: boolean) => void;
+        navigateToThemeEditor?: (themeName: string, locale: string, isBuiltin: boolean) => void;
+    } | null = null;
 
     constructor(app: App, plugin: I18nPlusPlugin) {
         this.app = app;
         this.plugin = plugin;
         this.store = new DictionaryStore(app, plugin);
+    }
+
+    /**
+     * Set a navigation target so that "edit" actions navigate within the
+     * same popout window instead of opening a new one or using the floating widget.
+     */
+    setNavigationTarget(target: { navigateToEditor: (pluginId: string, locale: string, isBuiltin: boolean) => void } | null): void {
+        this.navigationTarget = target;
     }
 
     private activeTab: 'plugins' | 'themes' = 'plugins';
@@ -301,12 +314,21 @@ export class DictionaryManagerView {
         installedDicts: DictionaryFileInfo[]
     ): void {
         const manager = getI18nPlusManager();
-        const translator = manager.getTranslator(pluginId);
-        if (!translator) return;
 
-        const builtinLocales = translator.getBuiltinLocales?.() || [];
-        const externalLocales = translator.getExternalLocales?.() || [];
-        const currentLocale = translator.getLocale();
+        // Metadata source: the manager's translator has full locale info (builtinLocales, etc.)
+        // The plugin's own i18n adapter may be a minimal implementation lacking these methods.
+        const metaTranslator = manager.getTranslator(pluginId);
+        if (!metaTranslator) return;
+
+        // Actual target for setLocale: the plugin's own adapter instance.
+        // This may differ from the manager's copy after plugin reload (destroyGlobalAPI + initGlobalAPI).
+        const plugin = (this.app as any).plugins?.plugins?.[pluginId];
+        const actualAdapter = plugin?.i18n;
+
+        const builtinLocales = metaTranslator.getBuiltinLocales?.() || [];
+        const externalLocales = metaTranslator.getExternalLocales?.() || [];
+        // Prefer actual adapter's locale (the one the plugin uses) over manager's copy
+        const currentLocale = actualAdapter?.getLocale?.() || metaTranslator.getLocale();
         const pluginDicts = installedDicts.filter(d => d.pluginId === pluginId);
 
         const section = container.createDiv({ cls: 'i18n-plus-plugin-section is-collapsed' });
@@ -346,14 +368,47 @@ export class DictionaryManagerView {
         }
 
         dropdown.onchange = () => {
-            translator.setLocale(dropdown.value);
-            manager.setGlobalLocale(dropdown.value);
-            new Notice(t('notice.switched_locale', { pluginId, locale: dropdown.value }));
+            // Set locale on the plugin's own adapter (this actually affects the plugin)
+            const target = actualAdapter || metaTranslator;
+            const newLocale = dropdown.value;
+            target.setLocale(newLocale);
+            // Also sync the manager's copy and emit per-plugin event
+            const managerCopy = manager.getTranslator(pluginId);
+            if (managerCopy && managerCopy !== target) {
+                managerCopy.setLocale(newLocale);
+            }
+            // Emit per-plugin locale change event so listeners can react
+            manager.setPluginLocale(pluginId, newLocale);
+            // Persist per-plugin locale preference
+            if (this.plugin.settings) {
+                this.plugin.settings.pluginLocales = this.plugin.settings.pluginLocales || {};
+                this.plugin.settings.pluginLocales[pluginId] = newLocale;
+                void this.plugin.saveSettings();
+            }
+            new Notice(t('notice.switched_locale', { pluginId, locale: newLocale }));
+            // Update the dropdown's selected option without re-rendering
+            if (dropdown) {
+                const sel = dropdown as HTMLSelectElement;
+                const newIndex = Array.from(sel.options).findIndex(o => o.value === newLocale);
+                if (newIndex >= 0) sel.selectedIndex = newIndex;
+            }
 
             if (pluginId === 'i18n-plus') {
                 window.setTimeout(() => {
                     this.plugin.floatingWidget?.refresh();
                 }, 50);
+            } else {
+                // Auto-restart the plugin so its UI picks up the new locale immediately
+                new Notice(`Restarting ${pluginId} to apply new locale...`);
+                const pm = (this.app as any).plugins;
+                if (pm && typeof pm.disablePlugin === 'function') {
+                    pm.disablePlugin(pluginId).then(() => {
+                        pm.enablePlugin(pluginId);
+                    }).catch((err: unknown) => {
+                        console.warn('[i18n-plus] Failed to restart plugin', pluginId, err);
+                        new Notice(`Could not restart ${pluginId}. Reload Obsidian to see changes.`);
+                    });
+                }
             }
         };
 
@@ -365,7 +420,7 @@ export class DictionaryManagerView {
         if (currentGlobalLocale === 'zh') targetLocales.push('zh-CN');
         if (currentGlobalLocale === 'zh-CN') targetLocales.push('zh');
 
-        const isLocallyAvailable = builtinLocales.some(l => targetLocales.includes(l)) ||
+        const isLocallyAvailable = builtinLocales.some((l: string) => targetLocales.includes(l)) ||
             pluginDicts.some(d => targetLocales.includes(d.locale));
 
         if (!isLocallyAvailable) {
@@ -526,7 +581,11 @@ export class DictionaryManagerView {
             // If builtin, treat as builtin (read-only).
             // Note: Overlay effectively edits the external file, so isBuiltin=false.
             const isBuiltinForEdit = (type === 'builtin');
-            this.plugin.showDictionaryEditor(pluginId, locale, undefined, isBuiltinForEdit);
+            if (this.navigationTarget) {
+                this.navigationTarget.navigateToEditor(pluginId, locale, isBuiltinForEdit);
+            } else {
+                this.plugin.showDictionaryEditor(pluginId, locale, undefined, isBuiltinForEdit);
+            }
         };
 
         // Export
@@ -809,7 +868,11 @@ export class DictionaryManagerView {
 
                     // 6. Open Editor immediately
                     // We show editor for the newly created file (external, so isBuiltin=false)
-                    this.plugin.showDictionaryEditor(pluginId, selectedLocale.code, undefined, false);
+                    if (this.navigationTarget) {
+                        this.navigationTarget.navigateToEditor(pluginId, selectedLocale.code, false);
+                    } else {
+                        this.plugin.showDictionaryEditor(pluginId, selectedLocale.code, undefined, false);
+                    }
 
                     // Refresh list
                     this.plugin.floatingWidget?.refresh();
@@ -1025,7 +1088,11 @@ export class DictionaryManagerView {
         setIcon(viewBtn, 'eye');
         viewBtn.onclick = (e) => {
             e.stopPropagation();
-            this.plugin.showDictionaryEditor(null, dict.locale, dict.themeName, isBuiltin);
+            if (this.navigationTarget?.navigateToThemeEditor) {
+                this.navigationTarget.navigateToThemeEditor(dict.themeName, dict.locale, isBuiltin);
+            } else {
+                this.plugin.showDictionaryEditor(null, dict.locale, dict.themeName, isBuiltin);
+            }
         };
 
         // Export

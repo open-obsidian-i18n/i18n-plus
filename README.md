@@ -16,7 +16,7 @@ For **Developers**, it provides zero-dependency i18n adapters and automated migr
 
 ### For Users
 - **Visual Management**: View and manage translation status of all plugins in a unified panel
-- **Hot Reload**: Switch plugin languages without restarting Obsidian, effective immediately
+- **Per-Plugin Locale Switching**: Switch language for each plugin independently — i18n+ refreshes its own UI dynamically, and automatically restarts third-party plugins to apply the new locale immediately
 - **Incremental Localization**: Modify only unsatisfactory translations via "Overlay" mode without affecting the original plugin
 - **Community Sharing**: Import/Export `.json` translation files for easy sharing
 - **Cloud Sync**: Download the latest community translation packages directly from the cloud
@@ -33,10 +33,10 @@ For **Developers**, it provides zero-dependency i18n adapters and automated migr
 
 1.  **Install Plugin**: Search for and install `i18n-plus` in Obsidian Community Plugins.
 2.  **Open Manager**: Click the `🌐` icon in the left sidebar, or use the command `Open Dictionary Manager`.
-3.  **Switch Language**:
+3. **Switch Language**:
     -   Find the target plugin in the list
     -   Select `zh` or another language from the dropdown
-    -   The interface will update immediately (for plugins supporting hot reload)
+    -   **i18n+ itself** refreshes dynamically; **other plugins** are automatically restarted to apply the new locale immediately
 4.  **Correct Translation**:
     -   Click the `👁️` (View Content) button next to the plugin
     -   Modify the translation in the editor

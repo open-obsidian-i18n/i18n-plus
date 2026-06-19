@@ -13,6 +13,8 @@ import { CloudManager } from './services/cloud-manager';
 import { DictionaryManagerView } from './ui/dictionary-manager';
 import { DictionaryEditorView } from './ui/dictionary-editor-modal';
 import { I18nFloatingWidget } from './ui/floating-widget';
+import { I18nPlusMainView, VIEW_TYPE_I18N_PLUS } from './ui/i18n-editor-view';
+import type { ViewRoute } from './ui/i18n-editor-view';
 import { initSelfI18n, t } from './lang';
 
 export default class I18nPlusPlugin extends Plugin {
@@ -20,6 +22,8 @@ export default class I18nPlusPlugin extends Plugin {
 	dictionaryStore: DictionaryStore;
 	cloudManager: CloudManager;
 	floatingWidget: I18nFloatingWidget | null = null;
+	/** Shared manager reference (holds translator instances for all plugins). */
+	i18nManager = getI18nPlusManager();
 
 	async onload() {
 		if (this.settings?.debugMode) console.debug('[i18n-plus] Loading plugin...');
@@ -39,6 +43,12 @@ export default class I18nPlusPlugin extends Plugin {
 		this.floatingWidget = new I18nFloatingWidget(this.app, this);
 		this.floatingWidget.onload();
 
+		// Register the main view (opens in popout window)
+		this.registerView(
+			VIEW_TYPE_I18N_PLUS,
+			(leaf) => new I18nPlusMainView(leaf, this),
+		);
+
 		// Get manager instance and set up event listeners first
 		// This ensures we capture plugin registrations when initGlobalAPI triggers i18n-plus:ready
 		const manager = getI18nPlusManager();
@@ -55,15 +65,15 @@ export default class I18nPlusPlugin extends Plugin {
 						console.debug(`[i18n-plus] Loaded ${count} dictionaries for plugin: ${pluginId}`);
 					}
 
-					// Apply global locale setting to this plugin if set
-					if (this.settings.currentLocale) {
+					// Apply locale: per-plugin override > global setting > default
+					const preferredLocale = this.settings.pluginLocales?.[pluginId] || this.settings.currentLocale;
+					if (preferredLocale) {
 						const translator = manager.getTranslator(pluginId);
-						// Only switch if plugin's current locale differs from global setting
-						if (translator && translator.getLocale() !== this.settings.currentLocale) {
+						if (translator && translator.getLocale() !== preferredLocale) {
 							try {
-								translator.setLocale(this.settings.currentLocale);
+								translator.setLocale(preferredLocale);
 								if (this.settings.debugMode) {
-									console.debug(`[i18n-plus] Applied locale preference to ${pluginId}: ${this.settings.currentLocale}`);
+									console.debug(`[i18n-plus] Applied locale to ${pluginId}: ${preferredLocale}`);
 								}
 							} catch (e) {
 								console.warn(`[i18n-plus] Failed to apply locale to ${pluginId}`, e);
@@ -83,6 +93,30 @@ export default class I18nPlusPlugin extends Plugin {
 						console.debug(`[i18n-plus] Saved locale preference: ${locale}`);
 					}
 				});
+			}
+		});
+
+		// Listen to per-plugin locale changes and refresh the UI
+		manager.on('plugin-locale-changed', (pluginId: unknown, locale: unknown) => {
+			if (typeof pluginId === 'string' && typeof locale === 'string') {
+				if (this.settings.debugMode) {
+					console.debug(`[i18n-plus] Plugin locale changed: ${pluginId} -> ${locale}`);
+				}
+				// If i18n-plus itself changed, refresh our own UI
+				if (pluginId === 'i18n-plus') {
+					// Refresh the floating widget if visible
+					if (this.floatingWidget) {
+						window.setTimeout(() => this.floatingWidget?.refresh(), 50);
+					}
+					// Re-render the popout view if open
+					const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_I18N_PLUS);
+					for (const leaf of leaves) {
+						const view = leaf.view;
+						if (view && 'renderRoute' in view) {
+							(view as any).renderRoute();
+						}
+					}
+				}
 			}
 		});
 
@@ -128,9 +162,9 @@ export default class I18nPlusPlugin extends Plugin {
 			}
 		});
 
-		// Add ribbon icon - click to open dictionary manager
+		// Add ribbon icon - click to open dictionary manager in popout
 		this.addRibbonIcon('languages', t('manager.title'), () => {
-			this.showDictionaryManager();
+			void this.showMainPopout();
 		});
 
 
@@ -186,10 +220,10 @@ export default class I18nPlusPlugin extends Plugin {
 		if (this.settings.debugMode) console.debug('[i18n-plus] Plugin unloaded');
 	}
 
-	showDictionaryManager() {
+	public showDictionaryManager() {
+		// Fallback: show in floating widget
 		if (!this.floatingWidget) return;
 
-		// If widget is collapsed, this expands it automatically via showView
 		const view = new DictionaryManagerView(this.app, this);
 		this.floatingWidget.showView(
 			(container) => { void view.render(container); },
@@ -197,12 +231,30 @@ export default class I18nPlusPlugin extends Plugin {
 		);
 	}
 
+	/**
+	 * Open the main i18n+ popout window.
+	 * Shows the dictionary manager by default.
+	 * Falls back to floating widget on mobile.
+	 */
+	public async showMainPopout(route?: ViewRoute): Promise<void> {
+		try {
+			const leaf = this.app.workspace.openPopoutLeaf({
+				size: { width: 960, height: 720 },
+			});
+
+			await leaf.setViewState({
+				type: VIEW_TYPE_I18N_PLUS,
+				active: true,
+				state: route || { mode: 'manager' },
+			});
+		} catch (e) {
+			// Mobile/Electron fallback
+			this.showDictionaryManager();
+		}
+	}
+
 	public showDictionaryEditor(pluginId: string | null, locale: string, themeName?: string, isBuiltinOverride?: boolean): void {
-		if (!this.floatingWidget) return;
-
-		// If themeName is provided, we default to "external" (editable) unless overridden.
-		// If isBuiltinOverride is provided, use it.
-
+		// Resolve isBuiltin if not explicitly provided
 		const manager = getI18nPlusManager();
 		let isBuiltin = isBuiltinOverride;
 
@@ -211,18 +263,15 @@ export default class I18nPlusPlugin extends Plugin {
 				const translator = manager.getTranslator(pluginId);
 				isBuiltin = translator?.getBuiltinLocales().includes(locale) || false;
 			} else {
-				// Themes default to false (editable) unless specified
 				isBuiltin = false;
 			}
 		}
 
-		// Pass themeName to constructor
-		const view = new DictionaryEditorView(this.app, this, pluginId || '', locale, isBuiltin, themeName);
+		const route: ViewRoute = pluginId
+			? { mode: 'editor', pluginId, locale, isBuiltin }
+			: { mode: 'editor-theme', themeName: themeName || '', locale, isBuiltin };
 
-		this.floatingWidget.showView(
-			(container) => { void view.render(container); },
-			themeName ? `${themeName} / ${locale}` : `${pluginId} / ${locale}`
-		);
+		void this.showMainPopout(route);
 	}
 
 	async loadSettings() {

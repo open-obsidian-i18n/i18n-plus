@@ -138,7 +138,7 @@ export interface I18nPlusAPI {
      * @param event Event name
      * @param callback Callback function
      */
-    on(event: 'locale-changed' | 'dictionary-loaded' | 'dictionary-unloaded' | 'plugin-registered', callback: (...args: unknown[]) => void): void;
+    on(event: 'locale-changed' | 'plugin-locale-changed' | 'dictionary-loaded' | 'dictionary-unloaded' | 'plugin-registered', callback: (...args: unknown[]) => void): void;
 
     /**
      * Remove event listener
