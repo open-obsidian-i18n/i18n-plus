@@ -5,6 +5,8 @@
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"preinstall": "node scripts/npm-proxy.mjs",
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs build",
@@ -29,7 +31,8 @@
 		"jiti": "2.6.1",
 		"tslib": "2.4.0",
 		"typescript": "5.8.3",
-		"typescript-eslint": "8.35.1"
+		"typescript-eslint": "8.35.1",
+		"vitest": "^4.1.9"
 	},
 	"dependencies": {
 		"obsidian": "latest"
