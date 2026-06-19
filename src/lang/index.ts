@@ -49,6 +49,14 @@ export const baseDictionary = {
     "manager.search_plugins_placeholder": "Search plugins...",
     "manager.search_themes_placeholder": "Search themes...",
     "manager.syncing_cloud": "Syncing cloud data...",
+    "manager.no_plugins_found": "No plugins found.",
+    "manager.no_plugins_match": "No plugins matching your search.",
+    "manager.no_plugins_registered": "No plugins registered.",
+    "manager.no_themes_found": "No themes found.",
+    "manager.no_themes_match": "No themes matching your search.",
+    "manager.no_dictionaries": "No dictionaries available for this plugin.",
+    "manager.download_all": "Download all translations",
+    "manager.download_all_result": "Downloaded {count}/{total} translations",
 
     // === Manager Actions ===
     "action.import_dictionary": "Import dictionary",
@@ -116,6 +124,8 @@ export const baseDictionary = {
     "notice.metadata_updated": "Metadata updated (pending save)",
     "notice.editor_export_success": "Exported {locale} dictionary",
     "notice.validation_errors": "Cannot save: {count} entries have validation errors",
+    "notice.download_failed": "Download failed: {error}",
+    "notice.export_failed_version": "Failed to export: Version not found for {pluginId}",
     "notice.save_success": "Saved and refreshed {locale} dictionary",
     "notice.save_failed": "Failed to save dictionary",
     "notice.no_plugins": "No plugins registered to i18n-plus",
@@ -129,6 +139,24 @@ export const baseDictionary = {
     "settings.debug_mode_desc": "Show detailed logs in the console",
     "settings.registered_plugins": "Registered plugins",
     "settings.loaded_locales": "Loaded locales: {locales}",
+    "settings.language_section": "Language",
+    "settings.preferred_language": "Preferred language",
+    "settings.preferred_language_desc": "Default language for translations. Plugins with available translations will use this language.",
+    "settings.language_auto": "Auto (follow Obsidian)",
+    "settings.cloud_section": "Cloud Dictionaries",
+    "settings.cdn_url": "CDN source URL",
+    "settings.cdn_url_desc": "Base URL for downloading dictionary manifests and translation files.",
+    "settings.cloud_status": "Cloud status",
+    "settings.cloud_loaded": "Manifest loaded. Dictionaries available for download.",
+    "settings.cloud_not_loaded": "Manifest not loaded yet. Open the dictionary manager to trigger sync.",
+    "settings.refresh_cloud": "Refresh",
+    "settings.debug_section": "Debug",
+    "settings.no_plugins_registered": "No plugins registered yet. Plugins need to integrate i18n-plus framework.",
+
+    // === Commands ===
+    "command.open_manager": "Open dictionary manager",
+    "command.show_plugins": "Show registered plugins",
+    "command.reload_dicts": "Reload all dictionaries",
 } as const satisfies Dictionary;
 
 // Type for translation keys
@@ -147,11 +175,13 @@ let translator: I18nTranslator<typeof baseDictionary> | null = null;
 export function initSelfI18n(pluginInstance: I18nPlusPlugin): void {
 
     // Create translator for i18n-plus itself
+    // Detect Obsidian's language, normalize zh-cn/zh-tw → zh
+    const detectedLocale = (window.moment?.locale() || 'en').split('-')[0];
     translator = new I18nTranslator({
         pluginId: 'i18n-plus',
         baseLocale: 'en',
         baseDictionary: baseDictionary,
-        currentLocale: undefined, // Will follow Obsidian's locale
+        currentLocale: detectedLocale,
     });
 
     // Load built-in translations (only zh, framework handles fallback for zh-CN/zh-TW)
