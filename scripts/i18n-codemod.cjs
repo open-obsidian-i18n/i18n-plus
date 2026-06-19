@@ -382,6 +382,216 @@ module.exports = function (file, api) {
         });
     });
 
+    // ══════════════════════════════════════════════════════════════════════
+    // 6. setTitle (modal titles): this.setTitle("text") → this.setTitle(this.plugin.t("text"))
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'setTitle' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length > 0) {
+            const text = flattenBinaryString(args[0]);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[0] = tCall;
+                    stats.replaced++;
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 7. addCommand name: plugin.addCommand({ name: "text", ... })
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'addCommand' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length > 0 && args[0].type === 'ObjectExpression') {
+            args[0].properties.forEach(prop => {
+                if (prop.key && prop.key.name === 'name') {
+                    const text = flattenBinaryString(prop.value);
+                    if (text !== null && !shouldIgnore(text)) {
+                        trackString(text);
+                        const tCall = createTCall(text, path);
+                        if (tCall) {
+                            prop.value = tCall;
+                            stats.replaced++;
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 8. addRibbonIcon: plugin.addRibbonIcon("icon", "tooltip", ...)
+    //    Second argument is the user-facing tooltip text
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'addRibbonIcon' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length >= 2) {
+            const text = flattenBinaryString(args[1]);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[1] = tCall;
+                    stats.replaced++;
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 9. addCheckbox: this.addCheckbox("text")
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'addCheckbox' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length > 0) {
+            const text = flattenBinaryString(args[0]);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[0] = tCall;
+                    stats.replaced++;
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 10. setHeading: .setHeading("Title") — setting group headings
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'setHeading' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length > 0) {
+            const text = flattenBinaryString(args[0]);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[0] = tCall;
+                    stats.replaced++;
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 11. new Error / new TemplaterError / new ...Error("text")
+    //     User-facing error messages in plugin UI
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.NewExpression).forEach(path => {
+        const callee = path.value.callee;
+        // Match Error, or any class ending with "Error"
+        const name = callee.type === 'Identifier' ? callee.name :
+                     callee.type === 'MemberExpression' && callee.property ? callee.property.name : null;
+        if (name && (name === 'Error' || name.endsWith('Error'))) {
+            const args = path.value.arguments;
+            if (args.length > 0) {
+                const text = flattenBinaryString(args[0]);
+                if (text !== null && !shouldIgnore(text)) {
+                    trackString(text);
+                    const tCall = createTCall(text, path);
+                    if (tCall) {
+                        args[0] = tCall;
+                        stats.replaced++;
+                    }
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 12. errorWrapper(async () => ..., "error message")
+    //     Second argument is the fallback error message
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { name: 'errorWrapper' }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length >= 2) {
+            const text = flattenBinaryString(args[1]);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[1] = tCall;
+                    stats.replaced++;
+                }
+            }
+        }
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 13. createFragment(f => f.append("text", ...))
+    //     Inside createFragment callbacks, .append() with string args
+    // Note: This catches .append() inside createFragment contexts.
+    // The general .append() handler (section 5) already exists but may
+    // miss some fragment patterns. This is a dedicated pass for them.
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'append' } }
+    }).forEach(path => {
+        // Only process if inside a createFragment callback
+        let current = path;
+        let inFragment = false;
+        while (current) {
+            if (current.node.type === 'CallExpression' &&
+                current.node.callee && current.node.callee.name === 'createFragment') {
+                inFragment = true;
+                break;
+            }
+            current = current.parent;
+        }
+        if (!inFragment) return;
+
+        const args = path.value.arguments;
+        args.forEach((arg, index) => {
+            const text = flattenBinaryString(arg);
+            if (text !== null && !shouldIgnore(text)) {
+                trackString(text);
+                const tCall = createTCall(text, path);
+                if (tCall) {
+                    args[index] = tCall;
+                    stats.replaced++;
+                }
+            }
+        });
+    });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 14. addExtraButton(cb => cb.setIcon("x").setTooltip("text"))
+    //     The .setTooltip call inside addExtraButton callbacks
+    // Note: .setTooltip is already covered in section 2 (UI_METHODS),
+    // this only flags the pattern for tracking. No extra code needed.
+    // ══════════════════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 15. addButton: .addButton(btn => btn.setButtonText("text"))
+    //     Note: setButtonText is already covered in section 2 (UI_METHODS).
+    //     This pass also catches btn.setButtonText inside addButton.
+    // ══════════════════════════════════════════════════════════════════════
+    root.find(j.CallExpression, {
+        callee: { property: { name: 'addButton' } }
+    }).forEach(path => {
+        const args = path.value.arguments;
+        if (args.length > 0) {
+            // Check if first arg is an arrow/function with setButtonText inside
+            // Already handled by section 2 UI_METHODS — no duplicate needed
+        }
+    });
+
     // Output transformation log for report generation
     if (process.env.I18N_GENERATE_LOG === 'true') {
         const logData = {
