@@ -6,6 +6,7 @@
 
 import { Notice, Plugin } from 'obsidian';
 import { initGlobalAPI, destroyGlobalAPI, getI18nPlusManager } from './framework';
+import { resolveLocale } from './framework/locales';
 import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab } from './settings';
 import { DictionaryStore } from './services/dictionary-store';
 import { CloudManager } from './services/cloud-manager';
@@ -30,6 +31,9 @@ export default class I18nPlusPlugin extends Plugin {
 
 		// Initialize Cloud Manager
 		this.cloudManager = new CloudManager();
+		if (this.settings.cdnUrl) {
+			this.cloudManager.setCdnUrl(this.settings.cdnUrl);
+		}
 
 		// Initialize Floating Widget
 		this.floatingWidget = new I18nFloatingWidget(this.app, this);
@@ -94,7 +98,7 @@ export default class I18nPlusPlugin extends Plugin {
 		// Add commands
 		this.addCommand({
 			id: 'open-dictionary-manager',
-			name: 'Open dictionary manager',
+			name: t('command.open_manager'),
 			callback: () => {
 				this.showDictionaryManager();
 			}
@@ -102,7 +106,7 @@ export default class I18nPlusPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'show-registered-plugins',
-			name: 'Show registered plugins',
+			name: t('command.show_plugins'),
 			callback: () => {
 				const manager = getI18nPlusManager();
 				const plugins = manager.getRegisteredPlugins();
@@ -116,7 +120,7 @@ export default class I18nPlusPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'reload-dictionaries',
-			name: 'Reload all dictionaries',
+			name: t('command.reload_dicts'),
 			callback: () => {
 				void this.dictionaryStore.autoLoadDictionaries().then(count => {
 					new Notice(t('notice.loaded_dicts', { count }));
@@ -133,13 +137,18 @@ export default class I18nPlusPlugin extends Plugin {
 
 		// Initialize Global Locale immediately
 		if (this.settings.currentLocale) {
-			manager.setGlobalLocale(this.settings.currentLocale);
+			const resolved = resolveLocale(this.settings.currentLocale);
+			if (resolved !== this.settings.currentLocale) {
+				this.settings.currentLocale = resolved;
+				void this.saveSettings();
+			}
+			manager.setGlobalLocale(resolved);
 			if (this.settings.debugMode) {
-				console.debug(`[i18n-plus] Restored locale: ${this.settings.currentLocale}`);
+				console.debug(`[i18n-plus] Restored locale: ${resolved}`);
 			}
 		} else {
 			// Auto-detect if no setting
-			const currentLang = window.moment?.locale() || 'en';
+			const currentLang = resolveLocale(window.moment?.locale() || 'en');
 			manager.setGlobalLocale(currentLang);
 			if (this.settings.debugMode) {
 				console.debug(`[i18n-plus] Auto-detected global locale: ${currentLang}`);
