@@ -47,12 +47,22 @@ export class I18nFloatingWidget {
         // Initial state: hidden (opened via command/ribbon)
         this.containerEl.addClass('i18n-plus-hidden');
 
-        // Calculate center position (assuming default panel size approx 800x600)
-        // We set styles directly, assuming panel mode is default target size
-        const defaultWidth = 800;
-        const defaultHeight = 600;
-        const initLeft = Math.max(0, (window.innerWidth - defaultWidth) / 2);
-        const initTop = Math.max(0, (window.innerHeight - defaultHeight) / 2);
+        // Calculate position: restore from settings or center
+        const settings = this.plugin.settings;
+        let initLeft: number;
+        let initTop: number;
+
+        if (settings.widgetPosX >= 0 && settings.widgetPosY >= 0) {
+            // Restore saved position
+            initLeft = settings.widgetPosX;
+            initTop = settings.widgetPosY;
+        } else {
+            // Center on screen (default)
+            const defaultWidth = 800;
+            const defaultHeight = 600;
+            initLeft = Math.max(0, (window.innerWidth - defaultWidth) / 2);
+            initTop = Math.max(0, (window.innerHeight - defaultHeight) / 2);
+        }
 
         this.containerEl.style.left = `${initLeft}px`;
         this.containerEl.style.top = `${initTop}px`;
@@ -262,5 +272,13 @@ export class I18nFloatingWidget {
         this.isDragging = false;
         activeDocument.removeEventListener('mousemove', this.onDragMove);
         activeDocument.removeEventListener('mouseup', this.onDragEnd);
+
+        // Save position if actually moved
+        if (this.hasMoved && this.containerEl) {
+            const rect = this.containerEl.getBoundingClientRect();
+            this.plugin.settings.widgetPosX = rect.left;
+            this.plugin.settings.widgetPosY = rect.top;
+            void this.plugin.saveSettings();
+        }
     };
 }

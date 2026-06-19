@@ -31,16 +31,24 @@ export class CloudManager {
     /** 
      * Remote Manifest URL 
      */
-    /** 
-     * Remote Manifest URL 
-     */
     private manifestUrl: string = 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@main/manifest.json';
+    private baseDownloadUrl: string = 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@main/';
     private remoteManifest: RemoteDictionaryInfo[] = [];
     private fetchPromise: Promise<RemoteDictionaryInfo[]> | null = null;
     public hasLoaded: boolean = false;
 
     public get isFetching(): boolean {
         return this.fetchPromise !== null;
+    }
+
+    /**
+     * Update the CDN base URL. Clears cache so next fetch uses the new URL.
+     */
+    setCdnUrl(url: string): void {
+        const base = url.replace(/\/+$/, '');
+        this.manifestUrl = `${base}/manifest.json`;
+        this.baseDownloadUrl = `${base}/`;
+        this.remoteManifest = [];
     }
 
     /**
@@ -68,12 +76,12 @@ export class CloudManager {
                 let plugins = manifest.plugins || [];
                 let themes = manifest.themes || [];
 
-                // URL Rewrite for Connectivity (GitHub Raw -> jsDelivr)
+                // URL Rewrite for Connectivity (GitHub Raw -> CDN)
                 const rewriteUrl = (url: string) => {
                     if (url && url.startsWith('https://raw.githubusercontent.com/open-obsidian-i18n/dictionaries/main/')) {
                         return url.replace(
                             'https://raw.githubusercontent.com/open-obsidian-i18n/dictionaries/main/',
-                            'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@main/'
+                            this.baseDownloadUrl
                         );
                     }
                     return url;

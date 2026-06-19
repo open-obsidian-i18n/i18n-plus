@@ -181,7 +181,7 @@ export class DictionaryManagerView {
                 if (filteredPlugins.length > 0 || !query) {
                     if (filteredPlugins.length === 0) {
                         contentContainer.createEl('div', {
-                            text: 'No plugins found.',
+                            text: t('manager.no_plugins_found'),
                             cls: 'setting-item-description i18n-plus-list-empty-msg'
                         });
                     }
@@ -204,7 +204,7 @@ export class DictionaryManagerView {
 
                 if (filteredPlugins.length === 0 && (!orphanDicts.length || orphanDicts.every(d => !d.pluginId.toLowerCase().includes(lowerQuery)))) {
                     contentContainer.createEl('p', {
-                        text: query ? 'No plugins matching your search.' : 'No plugins registered.',
+                        text: query ? t('manager.no_plugins_match') : t('manager.no_plugins_registered'),
                         cls: 'setting-item-description'
                     });
                 }
@@ -221,7 +221,7 @@ export class DictionaryManagerView {
                     }
                 } else {
                     contentContainer.createEl('p', {
-                        text: query ? 'No themes matching your search.' : 'No themes found.',
+                        text: query ? t('manager.no_themes_match') : t('manager.no_themes_found'),
                         cls: 'setting-item-description'
                     });
                 }
@@ -277,12 +277,20 @@ export class DictionaryManagerView {
                 void this.render(this.lastContainer);
             }
         } catch (error) {
-            new Notice(`Download failed: ${error instanceof Error ? error.message : String(error)}`);
+            new Notice(t('notice.download_failed', { error: error instanceof Error ? error.message : String(error) }));
             console.error(error);
         }
     }
 
     private lastContainer: HTMLElement | null = null;
+
+    /**
+     * Get a friendly display name for a plugin, including its manifest name if available.
+     */
+    private getPluginDisplayName(pluginId: string): string {
+        const manifest = (this.app as any).plugins?.plugins?.[pluginId]?.manifest;
+        return manifest?.name ? `${manifest.name} (${pluginId})` : pluginId;
+    }
 
     /**
      * Render single plugin section with collapsible functionality
@@ -313,7 +321,7 @@ export class DictionaryManagerView {
         setIcon(iconSpan, 'chevron-down');
 
         const info = titleArea.createDiv({ cls: 'setting-item-info' });
-        info.createDiv({ cls: 'setting-item-name', text: pluginId });
+        info.createDiv({ cls: 'setting-item-name', text: this.getPluginDisplayName(pluginId) });
         info.createDiv({
             cls: 'setting-item-description',
             text: t('manager.builtin_locales', { count: builtinLocales.length, external: pluginDicts.length })
@@ -328,14 +336,11 @@ export class DictionaryManagerView {
         const allLocales = [...new Set([...builtinLocales, ...externalLocales])];
         for (const locale of allLocales) {
             const localeInfo = OBSIDIAN_LOCALES.find(l => l.code === locale);
-            const label = localeInfo ? `${localeInfo.nativeName} (${locale})` : locale;
-            const isExternal = externalLocales.includes(locale) && !builtinLocales.includes(locale);
-            // Use Overlay status if both exist? The translator.getExternalLocales() just lists folders.
-            // But manager knows if it's overlay.
+            const label = localeInfo ? localeInfo.nativeName : locale;
 
             const option = dropdown.createEl('option', {
                 value: locale,
-                text: (isExternal ? '📥 ' : '📦 ') + label
+                text: label
             });
             if (locale === currentLocale) option.selected = true;
         }
@@ -395,6 +400,29 @@ export class DictionaryManagerView {
         setIcon(addBtn, 'plus');
         addBtn.onclick = () => this.createNewDictionary(pluginId);
 
+        // Batch Download Button
+        const cloudDicts = this.plugin.cloudManager.getCloudDictsForPlugin(pluginId);
+        if (cloudDicts.length > 0) {
+            const batchBtn = controls.createEl('button', { cls: 'clickable-icon' });
+            batchBtn.setAttribute('aria-label', t('manager.download_all'));
+            setIcon(batchBtn, 'cloud-download');
+            batchBtn.onclick = async (e) => {
+                e.stopPropagation();
+                batchBtn.addClass('is-loading');
+                let count = 0;
+                for (const remote of cloudDicts) {
+                    try {
+                        await this.handleCloudDownload(remote);
+                        count++;
+                    } catch (err) {
+                        console.error(`Failed to download ${remote.locale} for ${pluginId}:`, err);
+                    }
+                }
+                batchBtn.removeClass('is-loading');
+                new Notice(t('manager.download_all_result', { count, total: cloudDicts.length }));
+            };
+        }
+
         // --- Card Body ---
         const cardBody = section.createDiv({ cls: 'i18n-plus-card-body' });
         const dictGrid = cardBody.createDiv({ cls: 'i18n-plus-dict-list' });
@@ -423,7 +451,7 @@ export class DictionaryManagerView {
 
         if (allDictLocales.size === 0) {
             cardBody.createEl('div', {
-                text: 'No dictionaries available for this plugin.',
+                text: t('manager.no_dictionaries'),
                 cls: 'i18n-plus-no-dict'
             });
         }
@@ -654,7 +682,7 @@ export class DictionaryManagerView {
         const pluginManifest = (this.app as App & { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[pluginId];
 
         if (!pluginManifest || !pluginManifest.version) {
-            new Notice(`Failed to export: Version not found for plugin ${pluginId}`);
+            new Notice(t('notice.export_failed_version', { pluginId }));
             return;
         }
 
@@ -862,12 +890,11 @@ export class DictionaryManagerView {
 
         for (const locale of sortedLocales) {
             const localeInfo = OBSIDIAN_LOCALES.find(l => l.code === locale);
-            const label = localeInfo ? `${localeInfo.nativeName} (${locale})` : locale;
-            const isExternal = installedLocales.includes(locale); // Installed dicts are "external" in this context
+            const label = localeInfo ? localeInfo.nativeName : locale;
 
             const option = dropdown.createEl('option', {
                 value: locale,
-                text: (isExternal ? '📄 ' : '🌐 ') + label // Icon diff: File vs Web/Global
+                text: label
             });
             if (locale === currentGlobalLocale) option.selected = true;
         }
