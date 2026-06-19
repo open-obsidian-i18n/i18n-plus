@@ -48,8 +48,10 @@ export class DictionaryManagerView {
     }
 
     private activeTab: 'plugins' | 'themes' = 'plugins';
+    private _renderGen = 0;
 
     async render(container: HTMLElement) {
+        const gen = ++this._renderGen;
         this.containerEl = container;
         container.empty();
         container.addClass('i18n-plus-manager');
@@ -153,10 +155,14 @@ export class DictionaryManagerView {
         const registeredPlugins = manager.getRegisteredPlugins();
         const installedDicts = await this.store.listAllDictionaries();
         const installedThemeDicts = await this.store.listAllThemeDictionaries();
+        // Bail if a newer render has started (tab switch race)
+        if (gen !== this._renderGen) return;
 
         // Theme List Logic
         const installedThemes = await this.store.listInstalledThemes();
         const loadedThemeIds = manager.getLoadedThemes();
+        // Bail if a newer render has started
+        if (gen !== this._renderGen) return;
 
         const idToFolderMap = new Map<string, string>();
         for (const dict of installedThemeDicts) {
