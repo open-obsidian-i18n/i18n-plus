@@ -4,6 +4,8 @@
  * Global API Implementation, exposed to window.i18nPlus
  */
 
+import { resolveLocale } from './locales';
+
 import type {
     Dictionary,
     ValidationResult,
@@ -120,11 +122,11 @@ export class I18nPlusManager implements I18nPlusAPI {
      * Set locale for all registered plugins
      */
     setGlobalLocale(locale: string): void {
-        this.currentLocale = locale;
+        this.currentLocale = resolveLocale(locale);
         for (const translator of this.translators.values()) {
-            translator.setLocale(locale);
+            translator.setLocale(this.currentLocale);
         }
-        this.emit('locale-changed', locale);
+        this.emit('locale-changed', this.currentLocale);
     }
 
     /**
@@ -231,17 +233,18 @@ export class I18nPlusManager implements I18nPlusAPI {
         const themeLocales = this.themeDictionaries.get(resolvedName);
         if (!themeLocales) return undefined;
 
-        // Try current locale first
+        // Try current locale first (already resolved via resolveLocale)
         const dict = themeLocales.get(this.currentLocale);
         if (dict && key in dict) {
             const value = dict[key];
             if (typeof value === 'string') return value;
         }
 
-        // Fallback: try base locale (e.g., 'zh' for 'zh-CN')
-        const baseLang = this.currentLocale.split('-')[0] ?? this.currentLocale;
-        if (baseLang !== this.currentLocale) {
-            const baseDict = themeLocales.get(baseLang);
+        // Fallback: try base language from alias resolution
+        // e.g. 'zh' for 'zh-tw', 'en' for 'en-gb'
+        const baseLanguage = this.currentLocale === 'en' ? undefined : resolveLocale(this.currentLocale.split('-')[0] ?? this.currentLocale);
+        if (baseLanguage && baseLanguage !== this.currentLocale) {
+            const baseDict = themeLocales.get(baseLanguage);
             if (baseDict && key in baseDict) {
                 const value = baseDict[key];
                 if (typeof value === 'string') return value;

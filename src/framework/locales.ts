@@ -123,26 +123,89 @@ export function getLocaleInfo(code: string): LocaleInfo | undefined {
 }
 
 /**
- * Normalize locale code (lowercase, convert underscores to hyphens)
+ * Normalize locale code (lowercase, convert underscores to hyphens, strip dot suffixes)
+ *
+ * - "zh-CN"   → "zh-cn"
+ * - "zh_Hans" → "zh-hans"
+ * - "zh.hans" → "zh"          (dot suffix stripped)
+ * - "no-NO"   → "no-no"       (regional sub-tag preserved for alias resolution)
  */
 export function normalizeLocaleCode(code: string): string {
-    return code.toLowerCase().replace('_', '-');
+    // 1. lowercase
+    let result = code.toLowerCase();
+    // 2. underscores → hyphens
+    result = result.replace(/_/g, '-');
+    // 3. strip dot suffixes (e.g. "zh.hans" → "zh")
+    result = result.replace(/\..*$/, '');
+    return result;
 }
 
 /**
  * Locale alias mapping (for legacy codes or variants)
+ *
+ * Maps regional variants to their canonical Obsidian locale code.
+ * Preserves sub-tags that Obsidian treats as distinct (pt-br, en-gb, zh-tw).
  */
-export const LOCALE_ALIASES: Record<string, string> = {
-    'zh-cn': 'zh',
-    'zh-hans': 'zh',
-    'zh-hant': 'zh-tw',
-    'pt-pt': 'pt',
-};
+export const LOCALE_ALIASES: Map<string, string> = new Map([
+    // --- Chinese ---
+    ['zh-cn',      'zh'],
+    ['zh-sg',      'zh'],
+    ['zh-hans',    'zh'],
+    ['zh-hk',      'zh-tw'],
+    ['zh-mo',      'zh-tw'],
+    ['zh-tw',      'zh-tw'],   // identity — keeps zh-tw canonical
+    ['zh-hant',    'zh-tw'],
+
+    // --- Portuguese ---
+    ['pt-pt',      'pt'],
+    ['pt-br',      'pt-br'],   // identity — Obsidian treats as separate
+
+    // --- English ---
+    ['en-us',      'en'],
+    ['en-gb',      'en-gb'],   // identity
+    ['en-au',      'en-gb'],
+    ['en-ca',      'en-gb'],
+
+    // --- Norwegian ---
+    ['nb',         'no'],
+    ['nn',         'no'],
+
+    // --- Malay ---
+    ['ms-my',      'ms'],
+    ['ms-sg',      'ms'],
+
+    // --- Spanish variants → es ---
+    ['es-es',      'es'],
+    ['es-mx',      'es'],
+    ['es-ar',      'es'],
+
+    // --- French variants → fr ---
+    ['fr-fr',      'fr'],
+    ['fr-ca',      'fr'],
+    ['fr-be',      'fr'],
+    ['fr-ch',      'fr'],
+
+    // --- German variants → de ---
+    ['de-de',      'de'],
+    ['de-at',      'de'],
+    ['de-ch',      'de'],
+
+    // --- Common legacy codes ---
+    ['in',         'id'],      // Indonesian (old ISO code)
+    ['iw',         'he'],      // Hebrew (old ISO code)
+    ['ji',         'yi'],      // Yiddish (old ISO code)
+]);
 
 /**
- * Resolve locale code (handles aliases)
+ * Resolve locale code (handles aliases and normalization)
+ *
+ * Example:
+ *   "zh-CN"    → "zh"
+ *   "zh_Hant"  → "zh-tw"
+ *   "nb"       → "no"
+ *   "en"       → "en"        (identity, no alias)
  */
 export function resolveLocale(code: string): string {
     const normalized = normalizeLocaleCode(code);
-    return LOCALE_ALIASES[normalized] || normalized;
+    return LOCALE_ALIASES.get(normalized) || normalized;
 }

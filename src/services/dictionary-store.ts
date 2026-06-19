@@ -11,6 +11,7 @@ import { App, normalizePath } from 'obsidian';
 import type { Dictionary, ValidationResult } from '../framework/types';
 import type I18nPlusPlugin from '../main';
 import { getI18nPlusManager } from '../framework/global-api';
+import { resolveLocale } from '../framework/locales';
 import { ThemeExtractor } from './theme-extractor';
 
 /** Dictionary File Info */
@@ -128,14 +129,14 @@ export class DictionaryStore {
      * Get plugin dictionary file path
      */
     getDictionaryFilePath(pluginId: string, locale: string): string {
-        return normalizePath(`${this.pluginsBasePath}/${pluginId}/${locale}.json`);
+        return normalizePath(`${this.pluginsBasePath}/${pluginId}/${resolveLocale(locale)}.json`);
     }
 
     /**
      * Get theme dictionary file path
      */
     getThemeDictionaryFilePath(themeName: string, locale: string): string {
-        return normalizePath(`${this.themesBasePath}/${themeName}/${locale}.json`);
+        return normalizePath(`${this.themesBasePath}/${themeName}/${resolveLocale(locale)}.json`);
     }
 
     /**

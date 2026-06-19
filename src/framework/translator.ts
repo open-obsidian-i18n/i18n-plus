@@ -4,6 +4,8 @@
  * Translator core implementation
  */
 
+import { resolveLocale } from './locales';
+
 import type {
     Dictionary,
     DictionaryMeta,
@@ -34,12 +36,12 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
 
     constructor(options: TranslatorOptions<T>) {
         this.pluginId = options.pluginId;
-        this.baseLocale = options.baseLocale;
-        this._currentLocale = options.currentLocale || options.baseLocale;
+        this.baseLocale = resolveLocale(options.baseLocale);
+        this._currentLocale = resolveLocale(options.currentLocale || this.baseLocale);
         this.baseDictionary = options.baseDictionary;
         this.onValidationError = options.onValidationError;
 
-        // Store base dictionary in map
+        // Store base dictionary in map under resolved locale
         this.dictionaries.set(this.baseLocale, this.baseDictionary);
         this.builtinLocales.add(this.baseLocale);
     }
@@ -130,25 +132,33 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
      * Load dictionary
      */
     loadDictionary(locale: string, dict: Dictionary): ValidationResult {
+        const resolved = resolveLocale(locale);
+
         // Validate dictionary format
         const result = this.validateDictionary(dict);
 
         if (!result.valid) {
             // Trigger error callback
             this.onValidationError?.(result);
-            console.error(`[i18n-plus] Dictionary validation failed for ${this.pluginId}/${locale}:`, result.errors);
+            console.error(`[i18n-plus] Dictionary validation failed for ${this.pluginId}/${resolved}:`, result.errors);
             return result;
         }
 
         // Trigger callback for warnings if any, but do not block loading
         if (result.warnings && result.warnings.length > 0) {
-            console.warn(`[i18n-plus] Dictionary loaded with warnings for ${this.pluginId}/${locale}:`, result.warnings);
+            console.warn(`[i18n-plus] Dictionary loaded with warnings for ${this.pluginId}/${resolved}:`, result.warnings);
         }
 
-        // Store dictionary
-        this.dictionaries.set(locale, dict);
+        // Resolve locale to canonical form before storing
+        // Prevents duplicates like 'zh-CN' and 'zh' being stored separately
+        if (resolved !== locale) {
+            console.debug(`[i18n-plus] Resolved locale alias: ${locale} → ${resolved}`);
+        }
 
-        console.debug(`[i18n-plus] Loaded dictionary: ${this.pluginId}/${locale}`);
+        // Store dictionary under resolved locale
+        this.dictionaries.set(resolved, dict);
+
+        console.debug(`[i18n-plus] Loaded dictionary: ${this.pluginId}/${resolved}`);
         return result;
     }
 
@@ -156,9 +166,10 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
      * Load dictionary as builtin
      */
     loadBuiltinDictionary(locale: string, dict: Dictionary): ValidationResult {
+        const resolved = resolveLocale(locale);
         const result = this.loadDictionary(locale, dict);
         if (result.valid) {
-            this.builtinLocales.add(locale);
+            this.builtinLocales.add(resolved);
         }
         return result;
     }
@@ -167,18 +178,20 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
      * Unload dictionary
      */
     unloadDictionary(locale: string): void {
+        const resolved = resolveLocale(locale);
+
         // Cannot unload base dictionary
-        if (locale === this.baseLocale) {
-            console.warn(`[i18n-plus] Cannot unload base dictionary: ${locale}`);
+        if (resolved === this.baseLocale) {
+            console.warn(`[i18n-plus] Cannot unload base dictionary: ${resolved}`);
             return;
         }
 
-        if (this.dictionaries.has(locale)) {
-            this.dictionaries.delete(locale);
-            console.debug(`[i18n-plus] Unloaded dictionary: ${this.pluginId}/${locale}`);
+        if (this.dictionaries.has(resolved)) {
+            this.dictionaries.delete(resolved);
+            console.debug(`[i18n-plus] Unloaded dictionary: ${this.pluginId}/${resolved}`);
 
             // If unloading current locale, revert to base locale
-            if (this._currentLocale === locale) {
+            if (this._currentLocale === resolved) {
                 this._currentLocale = this.baseLocale;
                 console.debug(`[i18n-plus] Locale reset to base: ${this.baseLocale}`);
             }
@@ -189,7 +202,7 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
      * Set current locale
      */
     setLocale(locale: string): void {
-        this._currentLocale = locale;
+        this._currentLocale = resolveLocale(locale);
     }
 
     /**
@@ -221,18 +234,20 @@ export class I18nTranslator<T extends Dictionary = Dictionary> implements I18nTr
     }
 
     getDictionary(locale: string): Dictionary | undefined {
-        if (locale === this.baseLocale) {
+        const resolved = resolveLocale(locale);
+        if (resolved === this.baseLocale) {
             return this.baseDictionary;
         }
-        return this.dictionaries.get(locale);
+        return this.dictionaries.get(resolved);
     }
 
     /**
      * Get builtin dictionary
      */
     getBuiltinDictionary(locale: string): Dictionary | undefined {
-        if (this.builtinLocales.has(locale)) {
-            return this.dictionaries.get(locale);
+        const resolved = resolveLocale(locale);
+        if (this.builtinLocales.has(resolved)) {
+            return this.dictionaries.get(resolved);
         }
         return undefined;
     }
