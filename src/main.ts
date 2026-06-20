@@ -32,8 +32,14 @@ export default class I18nPlusPlugin extends Plugin {
 
 		// Initialize Cloud Manager
 		this.cloudManager = new CloudManager();
-		if (this.settings.cdnUrl) {
-			this.cloudManager.setCdnUrl(this.settings.cdnUrl);
+
+		// Resolve effective CDN URL from preset + optional custom URL
+		// (imported types used here are from settings.ts)
+		const effectiveCdnUrl = this.settings.cdnPreset === 'custom'
+			? (this.settings.cdnCustomUrl || this.settings.cdnUrl)
+			: this.settings.cdnUrl || 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@latest';
+		if (effectiveCdnUrl) {
+			this.cloudManager.setCdnUrl(effectiveCdnUrl);
 		}
 
 		// Register the main view (opens in popout window)
@@ -259,7 +265,25 @@ export default class I18nPlusPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<I18nPlusSettings>);
+		const savedData = await this.loadData() as Partial<I18nPlusSettings>;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
+
+		// Migration from old settings (v0.2.x) that didn't have cdnPreset/cdnCustomUrl
+		if (savedData.cdnPreset === undefined && savedData.cdnUrl) {
+			// Check if saved URL matches a known preset
+			const knownUrls: Record<string, string> = {
+				'default': 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@latest',
+				'jsdelivr-main': 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@main',
+				'unpkg': 'https://unpkg.com/@open-obsidian-i18n/dictionaries@latest',
+			};
+			const matched = Object.entries(knownUrls).find(([, url]) => url === savedData.cdnUrl);
+			if (matched) {
+				this.settings.cdnPreset = matched[0] as any;
+			} else {
+				this.settings.cdnPreset = 'custom';
+				this.settings.cdnCustomUrl = savedData.cdnUrl;
+			}
+		}
 	}
 
 	async saveSettings() {

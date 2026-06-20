@@ -10,6 +10,58 @@ import { OBSIDIAN_LOCALES } from './framework/locales';
 
 import { resolveLocale } from './framework/locales';
 
+// ============================================================================
+// CDN Preset Types & Helpers
+// ============================================================================
+
+export type CdnPreset = 'default' | 'jsdelivr-main' | 'unpkg' | 'custom';
+
+export const CDN_PRESETS: Record<Exclude<CdnPreset, 'custom'>, string> = {
+  'default': 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@latest',
+  'jsdelivr-main': 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@main',
+  'unpkg': 'https://unpkg.com/@open-obsidian-i18n/dictionaries@latest',
+};
+
+export interface CdnPresetOption {
+  value: CdnPreset;
+  label: string;
+  i18nKey: string;
+}
+
+export const CDN_PRESET_OPTIONS: CdnPresetOption[] = [
+  { value: 'default', label: 'jsDelivr (@latest)', i18nKey: 'settings.cdn_preset_default' },
+  { value: 'jsdelivr-main', label: 'jsDelivr (@main)', i18nKey: 'settings.cdn_preset_main' },
+  { value: 'unpkg', label: 'unpkg', i18nKey: 'settings.cdn_preset_unpkg' },
+  { value: 'custom', label: 'Custom URL...', i18nKey: 'settings.cdn_preset_custom' },
+];
+
+/**
+ * Resolve the effective CDN URL from a preset + optional custom URL.
+ * For non-custom presets, returns the built-in URL.
+ * For custom, returns whatever the user typed (may be empty).
+ */
+export function resolveCdnUrl(preset: CdnPreset, customUrl: string): string {
+  if (preset === 'custom') {
+    return customUrl;
+  }
+  return CDN_PRESETS[preset] ?? '';
+}
+
+/**
+ * Get the preset key that matches a given URL, or 'custom' if no match.
+ * Used for migration when loading settings from older versions.
+ */
+export function presetForUrl(url: string): CdnPreset {
+  for (const [key, presetUrl] of Object.entries(CDN_PRESETS)) {
+    if (url === presetUrl) return key as Exclude<CdnPreset, 'custom'>;
+  }
+  return 'custom';
+}
+
+// ============================================================================
+// Settings Interface
+// ============================================================================
+
 export interface I18nPlusSettings {
 	/** Whether to show debug logs */
 	debugMode: boolean;
@@ -17,7 +69,14 @@ export interface I18nPlusSettings {
 	currentLocale: string;
 	/** Per-plugin locale overrides (pluginId → locale) */
 	pluginLocales: Record<string, string>;
-	/** CDN base URL for dictionary manifest */
+	/** CDN preset name */
+	cdnPreset: CdnPreset;
+	/** Custom CDN URL (only used when cdnPreset === 'custom') */
+	cdnCustomUrl: string;
+	/**
+	 * Effective CDN base URL (resolved from preset or custom URL).
+	 * Persisted for backward compat and to avoid recomputation on every load.
+	 */
 	cdnUrl: string;
 }
 
@@ -25,8 +84,14 @@ export const DEFAULT_SETTINGS: I18nPlusSettings = {
 	debugMode: false,
 	currentLocale: '',  // Empty means use Obsidian's default language
 	pluginLocales: {},
-	cdnUrl: 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@latest',
+	cdnPreset: 'default',
+	cdnCustomUrl: '',
+	cdnUrl: CDN_PRESETS['default'],
 };
+
+// ============================================================================
+// Settings Tab
+// ============================================================================
 
 export class I18nPlusSettingTab extends PluginSettingTab {
 	plugin: I18nPlusPlugin;
@@ -75,16 +140,59 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 		// === Cloud Section ===
 		containerEl.createEl('h3', { text: t('settings.cloud_section') || 'Cloud Dictionaries' });
 
+		// CDN preset dropdown
 		new Setting(containerEl)
-			.setName(t('settings.cdn_url') || 'CDN source URL')
-			.setDesc(t('settings.cdn_url_desc') || 'Base URL for downloading dictionary manifests and translation files.')
-			.addText(text => text
-				.setPlaceholder('https://...')
-				.setValue(this.plugin.settings.cdnUrl)
-				.onChange(async (val) => {
-					this.plugin.settings.cdnUrl = val;
+			.setName(t('settings.cdn_source') || 'CDN source')
+			.setDesc(t('settings.cdn_source_desc') || 'Select a CDN provider for downloading dictionaries.')
+			.addDropdown(dd => {
+				for (const opt of CDN_PRESET_OPTIONS) {
+					const label = t(opt.i18nKey as any) || opt.label;
+					dd.addOption(opt.value, label);
+				}
+				dd.setValue(this.plugin.settings.cdnPreset);
+				dd.onChange(async (val) => {
+					const preset = val as CdnPreset;
+					this.plugin.settings.cdnPreset = preset;
+
+					// Resolve the effective URL
+					if (preset === 'custom') {
+						// Keep existing cdnCustomUrl, but use current cdnUrl as the custom URL if empty
+						if (!this.plugin.settings.cdnCustomUrl) {
+							this.plugin.settings.cdnCustomUrl = this.plugin.settings.cdnUrl;
+						}
+						// Don't change cdnUrl yet — user needs to type in the custom input
+					} else {
+						this.plugin.settings.cdnUrl = resolveCdnUrl(preset, '');
+						this.plugin.settings.cdnCustomUrl = '';
+						// Update CloudManager immediately
+						if (this.plugin.cloudManager) {
+							this.plugin.cloudManager.setCdnUrl(this.plugin.settings.cdnUrl);
+						}
+					}
+
 					await this.plugin.saveSettings();
-				}));
+					// Re-render to show/hide custom input
+					this.display();
+				});
+			});
+
+		// Custom URL input (only visible when preset is 'custom')
+		if (this.plugin.settings.cdnPreset === 'custom') {
+			new Setting(containerEl)
+				.setName(t('settings.cdn_custom_url') || 'Custom CDN URL')
+				.setDesc(t('settings.cdn_custom_url_desc') || 'Enter your own CDN base URL.')
+				.addText(text => text
+					.setPlaceholder('https://cdn.example.com/dictionaries')
+					.setValue(this.plugin.settings.cdnCustomUrl || this.plugin.settings.cdnUrl)
+					.onChange(async (val) => {
+						this.plugin.settings.cdnCustomUrl = val;
+						this.plugin.settings.cdnUrl = val;
+						await this.plugin.saveSettings();
+						if (this.plugin.cloudManager) {
+							this.plugin.cloudManager.setCdnUrl(val);
+						}
+					}));
+		}
 
 		// Cloud stats
 		if (this.plugin.cloudManager) {
