@@ -10,9 +10,7 @@ import { resolveLocale } from './framework/locales';
 import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab } from './settings';
 import { DictionaryStore } from './services/dictionary-store';
 import { CloudManager } from './services/cloud-manager';
-import { DictionaryManagerView } from './ui/dictionary-manager';
 import { DictionaryEditorView } from './ui/dictionary-editor-modal';
-import { I18nFloatingWidget } from './ui/floating-widget';
 import { I18nPlusMainView, VIEW_TYPE_I18N_PLUS } from './ui/i18n-editor-view';
 import type { ViewRoute } from './ui/i18n-editor-view';
 import { initSelfI18n, t } from './lang';
@@ -21,7 +19,6 @@ export default class I18nPlusPlugin extends Plugin {
 	settings: I18nPlusSettings;
 	dictionaryStore: DictionaryStore;
 	cloudManager: CloudManager;
-	floatingWidget: I18nFloatingWidget | null = null;
 	/** Shared manager reference (holds translator instances for all plugins). */
 	i18nManager = getI18nPlusManager();
 
@@ -38,10 +35,6 @@ export default class I18nPlusPlugin extends Plugin {
 		if (this.settings.cdnUrl) {
 			this.cloudManager.setCdnUrl(this.settings.cdnUrl);
 		}
-
-		// Initialize Floating Widget
-		this.floatingWidget = new I18nFloatingWidget(this.app, this);
-		this.floatingWidget.onload();
 
 		// Register the main view (opens in popout window)
 		this.registerView(
@@ -104,10 +97,6 @@ export default class I18nPlusPlugin extends Plugin {
 				}
 				// If i18n-plus itself changed, refresh our own UI
 				if (pluginId === 'i18n-plus') {
-					// Refresh the floating widget if visible
-					if (this.floatingWidget) {
-						window.setTimeout(() => this.floatingWidget?.refresh(), 50);
-					}
 					// Re-render the popout view if open
 					const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_I18N_PLUS);
 					for (const leaf of leaves) {
@@ -134,7 +123,7 @@ export default class I18nPlusPlugin extends Plugin {
 			id: 'open-dictionary-manager',
 			name: t('command.open_manager'),
 			callback: () => {
-				this.showDictionaryManager();
+				void this.showMainPopout({ mode: 'manager' });
 			}
 		});
 
@@ -212,31 +201,21 @@ export default class I18nPlusPlugin extends Plugin {
 	}
 
 	onunload() {
-		if (this.floatingWidget) {
-			this.floatingWidget.onunload();
-			this.floatingWidget = null;
-		}
 		destroyGlobalAPI();
 		if (this.settings.debugMode) console.debug('[i18n-plus] Plugin unloaded');
 	}
 
 	public showDictionaryManager() {
-		// Fallback: show in floating widget
-		if (!this.floatingWidget) return;
-
-		const view = new DictionaryManagerView(this.app, this);
-		this.floatingWidget.showView(
-			(container) => { void view.render(container); },
-			t('manager.title')
-		);
+		void this.showMainPopout({ mode: 'manager' });
 	}
 
 	/**
 	 * Open the main i18n+ popout window.
 	 * Shows the dictionary manager by default.
-	 * Falls back to floating widget on mobile.
+	 * Falls back to an in-app leaf on platforms where popouts are unavailable.
 	 */
 	public async showMainPopout(route?: ViewRoute): Promise<void> {
+		const state = route || { mode: 'manager' } as ViewRoute;
 		try {
 			const leaf = this.app.workspace.openPopoutLeaf({
 				size: { width: 960, height: 720 },
@@ -245,11 +224,16 @@ export default class I18nPlusPlugin extends Plugin {
 			await leaf.setViewState({
 				type: VIEW_TYPE_I18N_PLUS,
 				active: true,
-				state: route || { mode: 'manager' },
+				state,
 			});
 		} catch (e) {
-			// Mobile/Electron fallback
-			this.showDictionaryManager();
+			// Mobile/Electron fallback: open in an in-app leaf instead of a popout.
+			const leaf = this.app.workspace.getLeaf(false);
+			await leaf.setViewState({
+				type: VIEW_TYPE_I18N_PLUS,
+				active: true,
+				state,
+			});
 		}
 	}
 

@@ -17,10 +17,6 @@ export interface I18nPlusSettings {
 	currentLocale: string;
 	/** Per-plugin locale overrides (pluginId → locale) */
 	pluginLocales: Record<string, string>;
-	/** Last known X position of the floating widget */
-	widgetPosX: number;
-	/** Last known Y position of the floating widget */
-	widgetPosY: number;
 	/** CDN base URL for dictionary manifest */
 	cdnUrl: string;
 }
@@ -29,8 +25,6 @@ export const DEFAULT_SETTINGS: I18nPlusSettings = {
 	debugMode: false,
 	currentLocale: '',  // Empty means use Obsidian's default language
 	pluginLocales: {},
-	widgetPosX: -1,     // -1 means center on first open
-	widgetPosY: -1,
 	cdnUrl: 'https://cdn.jsdelivr.net/gh/open-obsidian-i18n/dictionaries@latest',
 };
 

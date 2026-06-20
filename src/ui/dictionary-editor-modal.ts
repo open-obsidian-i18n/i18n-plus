@@ -560,25 +560,25 @@ export class DictionaryEditorView {
                                     this.state.hasUnsavedChanges = true;
                                     this.updateSaveButtonState();
                                 }
-                                // Return to editor view after save
-                                this.plugin.floatingWidget?.showView(
-                                    (container) => { void this.render(container); },
-                                    t('editor.title')
-                                );
+                                // Return to editor after save — close the metadata modal
                             },
                             () => {
-                                // Cancel - return to editor view
-                                this.plugin.floatingWidget?.showView(
-                                    (container) => { void this.render(container); },
-                                    t('editor.title')
-                                );
+                                // Cancel — close the metadata modal, editor stays underneath
                             }
                         );
-                        // Show metadata view in floating widget
-                        this.plugin.floatingWidget?.showView(
-                            (container) => metaView.render(container),
-                            t('metadata.title')
+                        // Show metadata view in a modal
+                        const metaModal = new MetadataModal(
+                            this.app,
+                            this.plugin,
+                            metaView,
+                            () => {
+                                // Refresh the editor after modal closes
+                                if (this.container && this.container.isConnected) {
+                                    void this.render(this.container);
+                                }
+                            }
                         );
+                        metaModal.open();
                     } else {
                         // Initialize meta if missing
                         if (this.state.originalDict) {
@@ -811,5 +811,38 @@ class ConfirmModal extends Modal {
 
     onClose() {
         this.contentEl.empty();
+    }
+}
+
+/**
+ * Modal wrapper for MetadataEditorView.
+ * Replaces the old floating-widget-based metadata display.
+ */
+class MetadataModal extends Modal {
+    private plugin: I18nPlusPlugin;
+    private metaView: MetadataEditorView;
+    private onCloseCallback: () => void;
+
+    constructor(
+        app: App,
+        plugin: I18nPlusPlugin,
+        metaView: MetadataEditorView,
+        onClose: () => void
+    ) {
+        super(app);
+        this.plugin = plugin;
+        this.metaView = metaView;
+        this.onCloseCallback = onClose;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        this.metaView.render(contentEl);
+    }
+
+    onClose() {
+        this.contentEl.empty();
+        this.onCloseCallback();
     }
 }

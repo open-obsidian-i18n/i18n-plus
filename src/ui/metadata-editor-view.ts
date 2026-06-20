@@ -1,8 +1,8 @@
 /**
  * I18n Plus - Metadata Editor View
  * 
- * A view component for editing dictionary metadata within the floating widget.
- * Replaces the modal-based MetadataEditorModal for a consistent user experience.
+ * A view component for editing dictionary metadata.
+ * Renders into a provided container (modal or popout view).
  */
 
 import { App, Setting, Notice } from 'obsidian';
@@ -35,7 +35,6 @@ export class MetadataEditorView {
 
     /**
      * Render the metadata editor into a container
-     * Compatible with I18nFloatingWidget.showView()
      */
     render(container: HTMLElement): void {
         this.container = container;

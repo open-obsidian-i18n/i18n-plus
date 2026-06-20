@@ -1,0 +1,20 @@
+refactor: remove floating widget, fully superseded by popout window
+
+The I18nFloatingWidget (bubble + panel attached to document.body) has
+been fully replaced by the popout window approach (ItemView via
+openPopoutLeaf). This cleanup removes all floating widget code and
+replaces its remaining dependencies.
+
+Changes:
+- Delete src/ui/floating-widget.ts entirely
+- Remove floating widget instantiation and refresh calls from main.ts
+- Replace showDictionaryManager() fallback with showMainPopout()
+- Remove 8 floatingWidget.refresh() calls from dictionary-manager.ts
+- Replace checkThemeUpdate() floating widget re-show with popout refresh
+- Replace floating-widget-based metadata editor navigation with an
+  Obsidian Modal (new MetadataModal class)
+- Remove stale widgetPosX/widgetPosY settings fields
+- Update stale comments throughout
+
+浮动窗口已被弹出窗口完全替代。本次清理移除所有浮动窗口代码
+并将其依赖替换为弹出窗口方案。元数据编辑器改为 Obsidian Modal。

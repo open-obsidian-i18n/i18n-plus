@@ -20,7 +20,7 @@ import { t } from '../lang';
 
 /**
  * Dictionary Manager View
- * Renders into a container (Floating Widget) instead of being a Modal itself.
+ * Renders into a container (popout window).
  */
 export class DictionaryManagerView {
     private app: App;
@@ -41,7 +41,7 @@ export class DictionaryManagerView {
 
     /**
      * Set a navigation target so that "edit" actions navigate within the
-     * same popout window instead of opening a new one or using the floating widget.
+     * same popout window instead of opening a new one.
      */
     setNavigationTarget(target: { navigateToEditor: (pluginId: string, locale: string, isBuiltin: boolean) => void } | null): void {
         this.navigationTarget = target;
@@ -417,11 +417,7 @@ export class DictionaryManagerView {
                 if (newIndex >= 0) sel.selectedIndex = newIndex;
             }
 
-            if (pluginId === 'i18n-plus') {
-                window.setTimeout(() => {
-                    this.plugin.floatingWidget?.refresh();
-                }, 50);
-            } else {
+            if (pluginId !== 'i18n-plus') {
                 // Auto-restart the plugin so its UI picks up the new locale immediately
                 new Notice(`Restarting ${pluginId} to apply new locale...`);
                 const pm = (this.app as any).plugins;
@@ -679,7 +675,6 @@ export class DictionaryManagerView {
                 .onClick(() => {
                     void this.store.deleteDictionary(dict.pluginId, dict.locale).then(() => {
                         new Notice(t('notice.deleted_orphan', { pluginId: dict.pluginId, locale: dict.locale }));
-                        this.plugin.floatingWidget?.refresh();
                     });
                 })
             );
@@ -702,7 +697,6 @@ export class DictionaryManagerView {
 
             if (result.valid) {
                 new Notice(t('notice.import_success', { pluginId }));
-                this.plugin.floatingWidget?.refresh();
             } else {
                 const errorMsg = result.errors?.map(e => e.message).join(', ') || 'Unknown validation error';
                 new Notice(t('notice.import_failed', { error: errorMsg }));
@@ -810,7 +804,6 @@ export class DictionaryManagerView {
                     manager.unloadDictionary(dict.pluginId, dict.locale);
                     await this.store.deleteDictionary(dict.pluginId, dict.locale);
                     new Notice(t('notice.removed_dict', { locale: dict.locale }));
-                    this.plugin.floatingWidget?.refresh();
                 })();
             }
         );
@@ -899,7 +892,6 @@ export class DictionaryManagerView {
                     }
 
                     // Refresh list
-                    this.plugin.floatingWidget?.refresh();
 
                 } catch (error) {
                     console.error('[i18n-plus] Failed to create dictionary:', error);
@@ -1069,8 +1061,14 @@ export class DictionaryManagerView {
                     const updated = await this.store.ensureThemeBaseDictionaryUpToDate(themeName);
                     if (updated) {
                         new Notice(hasEn ? t('notice.theme_updated', { theme: themeName }) || `Updated base dictionary for ${themeName}` : t('notice.theme_generated', { theme: themeName }) || `Generated base dictionary for ${themeName}`);
-                        // Refresh view to show updated version/content
-                        this.plugin.showDictionaryManager();
+                        // Refresh popout views if open
+                        const leaves = this.app.workspace.getLeavesOfType('i18n-plus-main');
+                        for (const leaf of leaves) {
+                            const view = leaf.view;
+                            if (view && 'renderRoute' in view) {
+                                (view as any).renderRoute();
+                            }
+                        }
                     }
                 } catch (err) {
                     console.error(`[i18n-plus] Auto-update check failed for ${themeName}`, err);
@@ -1187,7 +1185,6 @@ export class DictionaryManagerView {
                     manager.loadThemeDictionary(themeName, selectedLocale.code, newDict);
 
                     new Notice(t('notice.created_dict', { locale: selectedLocale.code }));
-                    this.plugin.floatingWidget?.refresh();
 
                 } catch (error) {
                     console.error('[i18n-plus] Failed to create theme dictionary:', error);
@@ -1223,7 +1220,6 @@ export class DictionaryManagerView {
                     getI18nPlusManager().loadThemeDictionary(themeName, locale, dict);
 
                     new Notice(t('notice.import_success', { pluginId: themeName }));
-                    this.plugin.floatingWidget?.refresh();
                 } catch (err) {
                     new Notice("Import failed: " + String(err));
                 }
@@ -1284,7 +1280,6 @@ export class DictionaryManagerView {
                     await this.store.deleteThemeDictionary(dict.themeName, dict.locale);
 
                     new Notice(t('notice.removed_dict', { locale: dict.locale }));
-                    this.plugin.floatingWidget?.refresh();
                 })();
             }
         );
