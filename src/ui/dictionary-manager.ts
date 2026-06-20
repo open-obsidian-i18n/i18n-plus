@@ -307,8 +307,26 @@ export class DictionaryManagerView {
      * Get a friendly display name for a plugin, including its manifest name if available.
      */
     private getPluginDisplayName(pluginId: string): string {
-        const manifest = (this.app as any).plugins?.plugins?.[pluginId]?.manifest;
-        return manifest?.name ? `${manifest.name} (${pluginId})` : pluginId;
+        const plugins = (this.app as any).plugins?.plugins;
+        if (!plugins) return pluginId;
+
+        // Direct lookup: most plugins are registered with their manifest ID
+        const directPlugin = plugins[pluginId];
+        if (directPlugin?.manifest?.name) {
+            return `${directPlugin.manifest.name} (${pluginId})`;
+        }
+
+        // Fallback: search all loaded plugins matching their i18n adapter's pluginId
+        // Handles cases where registered ID differs from manifest ID,
+        // e.g. i18n-plus registers itself as 'i18n-plus' but its manifest ID is 'lang-plus'
+        for (const [obsidianId, plugin] of Object.entries(plugins)) {
+            const p = plugin as any;
+            if (p.manifest?.name && p.i18n?.pluginId === pluginId) {
+                return `${p.manifest.name} (${obsidianId})`;
+            }
+        }
+
+        return pluginId;
     }
 
     /**

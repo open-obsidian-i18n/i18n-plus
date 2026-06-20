@@ -192,6 +192,10 @@ export function initSelfI18n(pluginInstance: I18nPlusPlugin): void {
         translator.loadDictionary('zh', zhDict as Dictionary);
     }
 
+    // Store on plugin instance so it's findable via app.plugins.plugins lookup
+    // (same pattern as the adapter template that third-party plugins copy)
+    (pluginInstance as any).i18n = translator;
+
     // Register with global API if available
     if (window.i18nPlus) {
         window.i18nPlus.register('i18n-plus', translator);
