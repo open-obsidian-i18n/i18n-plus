@@ -307,7 +307,8 @@ export class DictionaryManagerView {
      * Get a friendly display name for a plugin, including its manifest name if available.
      */
     private getPluginDisplayName(pluginId: string): string {
-        const plugins = (this.app as any).plugins?.plugins;
+        const appWithPlugins = this.app as unknown as { plugins: { plugins: Record<string, { manifest?: { name: string }; i18n?: { pluginId: string } }> } };
+        const plugins = appWithPlugins.plugins?.plugins;
         if (!plugins) return pluginId;
 
         // Direct lookup: most plugins are registered with their manifest ID
@@ -320,7 +321,7 @@ export class DictionaryManagerView {
         // Handles cases where registered ID differs from manifest ID,
         // e.g. i18n-plus registers itself as 'i18n-plus' but its manifest ID is 'lang-plus'
         for (const [obsidianId, plugin] of Object.entries(plugins)) {
-            const p = plugin as any;
+            const p = plugin as { manifest?: { name: string }; i18n?: { pluginId: string } };
             if (p.manifest?.name && p.i18n?.pluginId === pluginId) {
                 return `${p.manifest.name} (${obsidianId})`;
             }
@@ -346,7 +347,8 @@ export class DictionaryManagerView {
 
         // Actual target for setLocale: the plugin's own adapter instance.
         // This may differ from the manager's copy after plugin reload (destroyGlobalAPI + initGlobalAPI).
-        const plugin = (this.app as any).plugins?.plugins?.[pluginId];
+        const appWithPlugins2 = this.app as unknown as { plugins: { plugins: Record<string, { i18n?: { getLocale?: () => string } }> } };
+        const plugin = appWithPlugins2.plugins?.plugins?.[pluginId];
         const actualAdapter = plugin?.i18n;
 
         const builtinLocales = metaTranslator.getBuiltinLocales?.() || [];
@@ -412,15 +414,14 @@ export class DictionaryManagerView {
             new Notice(t('notice.switched_locale', { pluginId, locale: newLocale }));
             // Update the dropdown's selected option without re-rendering
             if (dropdown) {
-                const sel = dropdown as HTMLSelectElement;
-                const newIndex = Array.from(sel.options).findIndex(o => o.value === newLocale);
-                if (newIndex >= 0) sel.selectedIndex = newIndex;
+                const newIndex = Array.from(dropdown.options).findIndex(o => o.value === newLocale);
+                if (newIndex >= 0) dropdown.selectedIndex = newIndex;
             }
 
             if (pluginId !== 'i18n-plus') {
                 // Auto-restart the plugin so its UI picks up the new locale immediately
                 new Notice(`Restarting ${pluginId} to apply new locale...`);
-                const pm = (this.app as any).plugins;
+                const pm = (this.app as unknown as { plugins: { disablePlugin: (id: string) => Promise<void>; enablePlugin: (id: string) => Promise<void> } }).plugins;
                 if (pm && typeof pm.disablePlugin === 'function') {
                     pm.disablePlugin(pluginId).then(() => {
                         pm.enablePlugin(pluginId);
@@ -1066,7 +1067,7 @@ export class DictionaryManagerView {
                         for (const leaf of leaves) {
                             const view = leaf.view;
                             if (view && 'renderRoute' in view) {
-                                (view as any).renderRoute();
+                                (view as unknown as { renderRoute: () => void }).renderRoute();
                             }
                         }
                     }

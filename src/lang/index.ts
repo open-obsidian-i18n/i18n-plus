@@ -200,7 +200,7 @@ export function initSelfI18n(pluginInstance: I18nPlusPlugin): void {
 
     // Store on plugin instance so it's findable via app.plugins.plugins lookup
     // (same pattern as the adapter template that third-party plugins copy)
-    (pluginInstance as any).i18n = translator;
+    (pluginInstance as unknown as I18nPlusPlugin & { i18n: I18nTranslator<typeof baseDictionary> }).i18n = translator;
 
     // Register with global API if available
     if (window.i18nPlus) {

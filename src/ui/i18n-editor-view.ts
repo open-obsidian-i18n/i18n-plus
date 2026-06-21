@@ -146,7 +146,7 @@ export class I18nPlusMainView extends ItemView {
             cls: 'clickable-icon i18n-plus-editor-back-btn',
             attr: { 'aria-label': 'Back to dictionary manager' },
         });
-        backBtn.innerHTML = '‹ Back';
+        backBtn.appendChild(document.createTextNode('‹ Back'));
         backBtn.onclick = () => this.navigateToManager();
 
         // Determine params based on route

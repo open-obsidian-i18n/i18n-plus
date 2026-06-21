@@ -2,13 +2,21 @@
  * I18n Plus Settings
  */
 
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, type App as ObsidianApp } from 'obsidian';
 import type I18nPlusPlugin from './main';
-import { t } from './lang';
-import { getI18nPlusManager } from './framework/global-api';
+import { t, type LangKey } from './lang';
+import { getI18nPlusManager, type I18nPlusAPI } from './framework/global-api';
 import { OBSIDIAN_LOCALES } from './framework/locales';
 
 import { resolveLocale } from './framework/locales';
+
+// Minimal type for accessing Obsidian's internal plugin registry
+// (app.plugins exists at runtime but is not exposed in Obsidian's public types)
+interface PluginRegistry {
+	plugins: Record<string, {
+		manifest: { id: string; name: string; version: string; };
+	}>;
+}
 
 // ============================================================================
 // CDN Preset Types & Helpers
@@ -106,7 +114,7 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		// === Language Section ===
-		containerEl.createEl('h3', { text: t('settings.language_section') || 'Language' });
+		new Setting(containerEl).setName(t('settings.language_section') || 'Language').setHeading();
 
 		new Setting(containerEl)
 			.setName(t('settings.preferred_language') || 'Preferred language')
@@ -138,7 +146,7 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 				});
 
 		// === Cloud Section ===
-		containerEl.createEl('h3', { text: t('settings.cloud_section') || 'Cloud Dictionaries' });
+		new Setting(containerEl).setName(t('settings.cloud_section') || 'Cloud Dictionaries').setHeading();
 
 		// CDN preset dropdown
 		new Setting(containerEl)
@@ -146,7 +154,7 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 			.setDesc(t('settings.cdn_source_desc') || 'Select a CDN provider for downloading dictionaries.')
 			.addDropdown(dd => {
 				for (const opt of CDN_PRESET_OPTIONS) {
-					const label = t(opt.i18nKey as any) || opt.label;
+					const label = t(opt.i18nKey as LangKey) || opt.label;
 					dd.addOption(opt.value, label);
 				}
 				dd.setValue(this.plugin.settings.cdnPreset);
@@ -221,7 +229,7 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 		}
 
 		// === Debug Section ===
-		containerEl.createEl('h3', { text: t('settings.debug_section') || 'Debug' });
+		new Setting(containerEl).setName(t('settings.debug_section') || 'Debug').setHeading();
 
 		new Setting(containerEl)
 			.setName(t('settings.debug_mode'))
@@ -247,7 +255,8 @@ export class I18nPlusSettingTab extends PluginSettingTab {
 				});
 			} else {
 				for (const pluginId of plugins) {
-					const manifest = (this.app as any).plugins?.plugins?.[pluginId]?.manifest;
+				const pluginRegistry = this.app as unknown as PluginRegistry;
+					const manifest = pluginRegistry.plugins?.plugins?.[pluginId]?.manifest;
 					const displayName = manifest?.name ? `${manifest.name} (${pluginId})` : pluginId;
 					const locales = window.i18nPlus.getLoadedLocales(pluginId);
 					new Setting(pluginListEl)

@@ -10,7 +10,6 @@ import { resolveLocale } from './framework/locales';
 import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab } from './settings';
 import { DictionaryStore } from './services/dictionary-store';
 import { CloudManager } from './services/cloud-manager';
-import { DictionaryEditorView } from './ui/dictionary-editor-modal';
 import { I18nPlusMainView, VIEW_TYPE_I18N_PLUS } from './ui/i18n-editor-view';
 import type { ViewRoute } from './ui/i18n-editor-view';
 import { initSelfI18n, t } from './lang';
@@ -108,7 +107,7 @@ export default class I18nPlusPlugin extends Plugin {
 					for (const leaf of leaves) {
 						const view = leaf.view;
 						if (view && 'renderRoute' in view) {
-							(view as any).renderRoute();
+							(view as unknown as { renderRoute: () => void }).renderRoute();
 						}
 					}
 				}
@@ -232,7 +231,7 @@ export default class I18nPlusPlugin extends Plugin {
 				active: true,
 				state,
 			});
-		} catch (e) {
+		} catch {
 			// Mobile/Electron fallback: open in an in-app leaf instead of a popout.
 			const leaf = this.app.workspace.getLeaf(false);
 			await leaf.setViewState({
@@ -278,7 +277,7 @@ export default class I18nPlusPlugin extends Plugin {
 			};
 			const matched = Object.entries(knownUrls).find(([, url]) => url === savedData.cdnUrl);
 			if (matched) {
-				this.settings.cdnPreset = matched[0] as any;
+				this.settings.cdnPreset = matched[0];
 			} else {
 				this.settings.cdnPreset = 'custom';
 				this.settings.cdnCustomUrl = savedData.cdnUrl;
