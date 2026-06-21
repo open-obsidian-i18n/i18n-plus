@@ -7,7 +7,7 @@
 import { Notice, Plugin } from 'obsidian';
 import { initGlobalAPI, destroyGlobalAPI, getI18nPlusManager } from './framework';
 import { resolveLocale } from './framework/locales';
-import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab } from './settings';
+import { DEFAULT_SETTINGS, I18nPlusSettings, I18nPlusSettingTab, type CdnPreset } from './settings';
 import { DictionaryStore } from './services/dictionary-store';
 import { CloudManager } from './services/cloud-manager';
 import { I18nPlusMainView, VIEW_TYPE_I18N_PLUS } from './ui/i18n-editor-view';
@@ -277,7 +277,7 @@ export default class I18nPlusPlugin extends Plugin {
 			};
 			const matched = Object.entries(knownUrls).find(([, url]) => url === savedData.cdnUrl);
 			if (matched) {
-				this.settings.cdnPreset = matched[0];
+				this.settings.cdnPreset = matched[0] as CdnPreset;
 			} else {
 				this.settings.cdnPreset = 'custom';
 				this.settings.cdnCustomUrl = savedData.cdnUrl;

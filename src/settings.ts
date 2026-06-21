@@ -2,10 +2,10 @@
  * I18n Plus Settings
  */
 
-import { App, PluginSettingTab, Setting, type App as ObsidianApp } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import type I18nPlusPlugin from './main';
 import { t, type LangKey } from './lang';
-import { getI18nPlusManager, type I18nPlusAPI } from './framework/global-api';
+import { getI18nPlusManager } from './framework/global-api';
 import { OBSIDIAN_LOCALES } from './framework/locales';
 
 import { resolveLocale } from './framework/locales';
@@ -13,9 +13,11 @@ import { resolveLocale } from './framework/locales';
 // Minimal type for accessing Obsidian's internal plugin registry
 // (app.plugins exists at runtime but is not exposed in Obsidian's public types)
 interface PluginRegistry {
-	plugins: Record<string, {
-		manifest: { id: string; name: string; version: string; };
-	}>;
+	plugins: {
+		plugins: Record<string, {
+			manifest: { id: string; name: string; version: string; [key: string]: unknown };
+		}>;
+	};
 }
 
 // ============================================================================

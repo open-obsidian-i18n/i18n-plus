@@ -347,7 +347,7 @@ export class DictionaryManagerView {
 
         // Actual target for setLocale: the plugin's own adapter instance.
         // This may differ from the manager's copy after plugin reload (destroyGlobalAPI + initGlobalAPI).
-        const appWithPlugins2 = this.app as unknown as { plugins: { plugins: Record<string, { i18n?: { getLocale?: () => string } }> } };
+        const appWithPlugins2 = this.app as unknown as { plugins: { plugins: Record<string, { i18n?: { getLocale?: () => string; setLocale?: (locale: string) => void } }> } };
         const plugin = appWithPlugins2.plugins?.plugins?.[pluginId];
         const actualAdapter = plugin?.i18n;
 
