@@ -397,7 +397,7 @@ export class DictionaryManagerView {
             // Set locale on the plugin's own adapter (this actually affects the plugin)
             const target = actualAdapter || metaTranslator;
             const newLocale = dropdown.value;
-            target.setLocale(newLocale);
+            target.setLocale?.(newLocale);
             // Also sync the manager's copy and emit per-plugin event
             const managerCopy = manager.getTranslator(pluginId);
             if (managerCopy && managerCopy !== target) {
