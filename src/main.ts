@@ -264,7 +264,8 @@ export default class I18nPlusPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const savedData = await this.loadData() as Partial<I18nPlusSettings>;
+		// loadData() returns null on first install (no data.json yet); guard against it
+		const savedData = (await this.loadData() ?? {}) as Partial<I18nPlusSettings>;
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
 
 		// Migration from old settings (v0.2.x) that didn't have cdnPreset/cdnCustomUrl
